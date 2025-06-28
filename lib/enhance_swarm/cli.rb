@@ -524,6 +524,39 @@ module EnhanceSwarm
       interrupt_handler.send(:restart_agent, agent)
     end
 
+    desc 'communicate', 'Manage agent communication and messages'
+    option :list, type: :boolean, desc: 'List pending messages from agents'
+    option :respond, type: :string, desc: 'Respond to a specific message ID'
+    option :response, type: :string, desc: 'Response text (used with --respond)'
+    option :interactive, type: :boolean, desc: 'Enter interactive communication mode'
+    option :history, type: :boolean, desc: 'Show recent communication history'
+    option :cleanup, type: :boolean, desc: 'Clean up old messages'
+    def communicate(response_text = nil)
+      communicator = AgentCommunicator.instance
+      
+      if options[:list]
+        communicator.show_pending_messages
+      elsif options[:respond]
+        message_id = options[:respond]
+        response = options[:response] || response_text || ask("Response:", :blue)
+        
+        if response && !response.empty?
+          communicator.user_respond(message_id, response)
+        else
+          say "❌ Response cannot be empty", :red
+        end
+      elsif options[:interactive]
+        communicator.interactive_response_mode
+      elsif options[:history]
+        show_communication_history
+      elsif options[:cleanup]
+        communicator.cleanup_old_messages
+        say "✅ Cleaned up old messages", :green
+      else
+        show_communication_status
+      end
+    end
+
     private
 
     def test_notifications
@@ -590,6 +623,76 @@ module EnhanceSwarm
       
       if recent_count > 0
         say "\nUse 'enhance-swarm notifications --history' to view recent notifications"
+      end
+    end
+
+    def show_communication_status
+      communicator = AgentCommunicator.instance
+      pending = communicator.pending_messages
+      recent = communicator.recent_messages(5)
+      
+      say "\n💬 Agent Communication Status:", :blue
+      say "  Pending messages: #{pending.count}"
+      say "  Recent messages: #{recent.count}"
+      
+      if pending.any?
+        say "\n📋 Pending Messages:", :yellow
+        pending.first(3).each_with_index do |message, index|
+          age = time_ago(Time.parse(message[:timestamp]))
+          say "  #{index + 1}. #{message[:type]} from #{message[:role]} (#{age} ago)"
+          say "     #{message[:content][0..60]}..."
+        end
+        
+        if pending.count > 3
+          say "  ... and #{pending.count - 3} more"
+        end
+        
+        say "\nUse 'enhance-swarm communicate --list' to see all pending messages"
+        say "Use 'enhance-swarm communicate --interactive' for interactive mode"
+      else
+        say "  No pending messages from agents"
+      end
+    end
+
+    def show_communication_history
+      communicator = AgentCommunicator.instance
+      recent = communicator.recent_messages(10)
+      
+      if recent.empty?
+        say "No recent communication history", :yellow
+        return
+      end
+      
+      say "\n💬 Recent Agent Communication:", :blue
+      recent.each do |message|
+        timestamp = Time.parse(message[:timestamp]).strftime('%H:%M:%S')
+        type_icon = case message[:type]
+                    when :question then '❓'
+                    when :decision then '🤔'
+                    when :status then '📝'
+                    when :progress then '📊'
+                    else '💬'
+                    end
+        
+        color = message[:requires_response] ? :yellow : :white
+        status = message[:requires_response] ? '(needs response)' : ''
+        
+        say "[#{timestamp}] #{type_icon} #{message[:role]} - #{message[:type]} #{status}", color
+        say "   #{message[:content][0..80]}#{message[:content].length > 80 ? '...' : ''}"
+      end
+    end
+
+    def time_ago(time)
+      seconds = Time.now - time
+      
+      if seconds < 60
+        "#{seconds.round}s"
+      elsif seconds < 3600
+        "#{(seconds / 60).round}m"
+      elsif seconds < 86400
+        "#{(seconds / 3600).round}h"
+      else
+        "#{(seconds / 86400).round}d"
       end
     end
   end
