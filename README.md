@@ -8,6 +8,7 @@ EnhanceSwarm transforms Claude into a sophisticated multi-agent development team
 
 - **🎛️ Control Agent**: Autonomous Claude instance coordinates multi-agent workflows
 - **📡 Live Streaming**: Real-time output streaming from all agents with progress bars
+- **🔔 Smart Notifications**: Cross-platform desktop notifications with intelligent interrupts
 - **🔄 Smart Coordination**: Intelligent dependency management (backend → frontend → qa)
 - **📊 Progress Tracking**: Time estimates, token usage, and completion percentages
 - **🔍 Agent Review**: Monitor and track work across all agent worktrees
@@ -186,6 +187,56 @@ Time: 2025-06-28 19:45:30
   payment-integration (5m ago)
 ```
 
+## 🔔 Smart Notifications & Interrupts
+
+Stay informed about agent progress with intelligent notifications:
+
+```bash
+# Enable notifications with enhance command
+enhance-swarm enhance "implement auth system" --notifications
+
+# Manage notification settings
+enhance-swarm notifications --enable
+enhance-swarm notifications --test
+enhance-swarm notifications --history
+```
+
+**Notification Features:**
+
+- **Desktop Notifications**: Cross-platform desktop alerts (macOS/Linux/Windows)
+- **Priority-Based**: Critical, High, Medium, Low priority notifications
+- **Agent Events**: Completion, failures, stuck detection, milestones
+- **Intelligent Interrupts**: Timeout-based prompts for stuck/failed agents
+- **Sound Alerts**: Configurable sound notifications for critical events
+
+**Interrupt Handling:**
+
+```bash
+# Automatic prompts for stuck agents
+Agent 'backend' stuck for 12m. Restart? [y/N]
+(Auto-selecting 'n' in 30s if no response)
+
+# Smart error recovery suggestions
+Agent 'frontend' failed: Connection timeout
+💡 Quick fixes:
+  1. Restart agent with longer timeout
+  2. Check network connectivity
+Choose [1-2] or [c]ustom command:
+
+# Manual agent management
+enhance-swarm restart backend-auth-123
+```
+
+**Notification History:**
+
+```bash
+enhance-swarm notifications --history
+# 📋 Recent Notifications:
+# [14:32:15] HIGH - Agent Completed: 🎉 Agent 'backend' completed successfully!
+# [14:28:45] CRITICAL - Agent Failed: ❌ Agent 'frontend' failed: Timeout
+# [14:25:30] MEDIUM - Progress Milestone: 📍 Backend complete (75% complete)
+```
+
 ## 🧠 Core Commands & Examples
 
 ### Multi-Agent Orchestration
@@ -234,6 +285,14 @@ enhance-swarm status --json
 # Cleanup stale resources
 enhance-swarm cleanup --all
 # → Removes abandoned worktrees, branches, temp files
+
+# Restart stuck/failed agents
+enhance-swarm restart backend-auth-123
+# → Intelligent restart with resource cleanup
+
+# Manage notifications
+enhance-swarm notifications --test
+# → Test notification system functionality
 ```
 
 ## 🏗️ Architecture Overview
