@@ -3,6 +3,9 @@
 require 'open3'
 require 'json'
 require_relative 'command_executor'
+require_relative 'retry_handler'
+require_relative 'logger'
+require_relative 'cleanup_manager'
 
 module EnhanceSwarm
   class Orchestrator
@@ -51,18 +54,33 @@ module EnhanceSwarm
     end
 
     def spawn_single(task:, role:, worktree:)
+      operation_id = "spawn_#{role}_#{Time.now.to_i}"
+      Logger.log_operation(operation_id, 'started', { role: role, worktree: worktree })
+      
       agent_prompt = build_agent_prompt(task, role)
-
       args = ['start', '-p', agent_prompt]
       args << '--worktree' if worktree && @config.worktree_enabled
 
       puts "🚀 Spawning #{role} agent...".colorize(:yellow)
 
       begin
-        CommandExecutor.execute_async('claude-swarm', *args)
+        pid = RetryHandler.with_retry(max_retries: 3) do
+          CommandExecutor.execute_async('claude-swarm', *args)
+        end
+        
         puts '✅ Agent spawned successfully'.colorize(:green)
-      rescue CommandExecutor::CommandError => e
+        Logger.log_operation(operation_id, 'success', { role: role, pid: pid })
+        pid
+      rescue RetryHandler::RetryError, CommandExecutor::CommandError => e
         puts "❌ Failed to spawn agent: #{e.message}".colorize(:red)
+        Logger.log_operation(operation_id, 'failed', { role: role, error: e.message })
+        
+        # Attempt cleanup on failure
+        CleanupManager.cleanup_failed_operation(operation_id, {
+          role: role,
+          worktree_path: worktree ? generate_worktree_path(role) : nil
+        })
+        
         false
       end
     end
@@ -97,17 +115,34 @@ module EnhanceSwarm
 
     def spawn_agents(agents)
       puts "\n🤖 Spawning #{agents.count} agents...".colorize(:yellow)
+      spawned_agents = []
+      failed_agents = []
 
-      agents.each do |agent|
-        spawn_single(
+      agents.each_with_index do |agent, index|
+        # Add jitter to prevent resource contention
+        sleep(2 + rand(0..2)) if index > 0
+        
+        result = spawn_single(
           task: agent[:task],
           role: agent[:role],
           worktree: true
         )
-        sleep 2 # Brief pause between spawns
+        
+        if result
+          spawned_agents << { **agent, pid: result }
+        else
+          failed_agents << agent
+        end
       end
 
-      puts '✅ All agents spawned'.colorize(:green)
+      if failed_agents.empty?
+        puts '✅ All agents spawned'.colorize(:green)
+      else
+        puts "⚠️ #{spawned_agents.size}/#{agents.size} agents spawned successfully".colorize(:yellow)
+        Logger.warn("Failed to spawn agents: #{failed_agents.map { |a| a[:role] }.join(', ')}")
+      end
+      
+      { spawned: spawned_agents, failed: failed_agents }
     end
 
     def build_agent_prompt(task, role)
@@ -191,6 +226,11 @@ module EnhanceSwarm
       # Escape shell metacharacters in arguments
       require 'shellwords'
       Shellwords.escape(arg.to_s)
+    end
+    
+    def generate_worktree_path(role)
+      timestamp = Time.now.strftime('%Y%m%d-%H%M%S')
+      File.join(EnhanceSwarm.root, 'worktrees', "swarm-#{role}-#{timestamp}")
     end
 
     def show_execution_plan(task)

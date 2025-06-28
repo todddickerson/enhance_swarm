@@ -64,20 +64,39 @@ module EnhanceSwarm
     end
 
     desc 'status', 'Show status of all swarm operations'
+    option :json, type: :boolean, desc: 'Output status in JSON format'
     def status
       monitor = Monitor.new
       status = monitor.status
+      
+      if options[:json]
+        puts JSON.pretty_generate({
+          timestamp: Time.now.iso8601,
+          status: status,
+          health: system_health_summary
+        })
+        return
+      end
 
       say "\n📊 Swarm Status:", :green
       say "  Active agents: #{status[:active_agents]}", status[:active_agents] > 0 ? :yellow : :white
       say "  Completed tasks: #{status[:completed_tasks]}", :green
       say "  Worktrees: #{status[:worktrees].count}", :blue
 
-      return unless status[:recent_branches].any?
-
-      say "\n📌 Recent branches:", :yellow
-      status[:recent_branches].each do |branch|
-        say "  - #{branch}"
+      if status[:recent_branches].any?
+        say "\n📌 Recent branches:", :yellow
+        status[:recent_branches].each do |branch|
+          say "  - #{branch}"
+        end
+      end
+      
+      # Show health summary
+      health = system_health_summary
+      if health[:issues].any?
+        say "\n⚠️  Health Issues:", :yellow
+        health[:issues].each do |issue|
+          say "  - #{issue}", :red
+        end
       end
     end
 
@@ -126,36 +145,139 @@ module EnhanceSwarm
     end
 
     desc 'doctor', 'Check system setup and dependencies'
+    option :detailed, type: :boolean, desc: 'Show detailed dependency information'
+    option :json, type: :boolean, desc: 'Output results in JSON format'
     def doctor
+      if options[:json]
+        run_detailed_doctor_json
+      else
+        run_basic_doctor(options[:detailed])
+      end
+    end
+    
+    no_commands do
+      def system_health_summary
+        issues = []
+        
+        # Check for stale worktrees
+        begin
+          output = `git worktree list 2>/dev/null`
+          worktree_count = output.lines.count { |line| line.include?('swarm/') }
+          issues << "#{worktree_count} stale swarm worktrees" if worktree_count > 5
+        rescue
+          # Ignore errors
+        end
+        
+        # Check disk space (basic)
+        begin
+          stat = File.statvfs('.')
+          free_gb = (stat.bavail * stat.frsize) / (1024 * 1024 * 1024)
+          issues << "Low disk space (#{free_gb}GB free)" if free_gb < 1
+        rescue
+          # Not supported on all platforms
+        end
+        
+        { issues: issues }
+      end
+    end
+    
+    private
+    
+    def run_basic_doctor(detailed)
       say '🔍 Running EnhanceSwarm diagnostics...', :yellow
 
-      checks = {
-        "Ruby version": -> { RUBY_VERSION >= '3.0.0' },
-        "Git installed": -> { system('which git > /dev/null 2>&1') },
-        "Claude Swarm installed": -> { system('which claude-swarm > /dev/null 2>&1') },
-        "Swarm Tasks gem": -> { system('gem list swarm_tasks -i > /dev/null 2>&1') },
-        "Git worktree support": -> { system('git worktree list > /dev/null 2>&1') },
-        "Gemini CLI": -> { system('which gemini > /dev/null 2>&1') }
-      }
-
-      all_good = true
-      checks.each do |check, test|
-        result = test.call
-        all_good &&= result
-        status = result ? '✓'.green : '✗'.red
-        say "  #{status} #{check}"
+      validation_results = DependencyValidator.validate_all
+      
+      validation_results[:results].each do |tool, result|
+        status = result[:passed] ? '✓'.green : '✗'.red
+        
+        if detailed && result[:version]
+          say "  #{status} #{tool.capitalize}: #{result[:version]} (required: #{result[:required]})"
+        else
+          say "  #{status} #{tool.capitalize}"
+        end
+        
+        if !result[:passed] && result[:error]
+          say "    Error: #{result[:error]}", :red
+        end
       end
 
-      if all_good
-        say "\n✅ All checks passed!", :green
+      if validation_results[:passed]
+        say "\n✅ All critical dependencies met!", :green
       else
-        say "\n⚠️  Some checks failed. Please install missing dependencies.", :yellow
+        say "\n⚠️  Some dependencies failed. Please address the issues above.", :yellow
+        exit(1) if ENV['ENHANCE_SWARM_STRICT'] == 'true'
       end
+      
+      # Run functional tests if requested
+      if detailed
+        say "\n🔧 Running functionality tests...", :yellow
+        functional_results = DependencyValidator.validate_functionality
+        
+        functional_results.each do |test, result|
+          status = result[:passed] ? '✓'.green : '✗'.red
+          say "  #{status} #{test.to_s.humanize}"
+          
+          if !result[:passed] && result[:error]
+            say "    Error: #{result[:error]}", :red
+          end
+        end
+      end
+    end
+    
+    def run_detailed_doctor_json
+      validation_results = DependencyValidator.validate_all
+      functional_results = DependencyValidator.validate_functionality
+      
+      output = {
+        timestamp: Time.now.iso8601,
+        version: EnhanceSwarm::VERSION,
+        dependencies: validation_results,
+        functionality: functional_results,
+        environment: {
+          ruby_version: RUBY_VERSION,
+          platform: RUBY_PLATFORM,
+          pwd: Dir.pwd
+        }
+      }
+      
+      puts JSON.pretty_generate(output)
     end
 
     desc 'version', 'Show EnhanceSwarm version'
+    option :json, type: :boolean, desc: 'Output version info in JSON format'
     def version
-      say "EnhanceSwarm v#{EnhanceSwarm::VERSION}"
+      if options[:json]
+        puts JSON.pretty_generate({
+          version: EnhanceSwarm::VERSION,
+          ruby_version: RUBY_VERSION,
+          platform: RUBY_PLATFORM
+        })
+      else
+        say "EnhanceSwarm v#{EnhanceSwarm::VERSION}"
+      end
+    end
+    
+    desc 'cleanup', 'Clean up stale swarm resources'
+    option :dry_run, type: :boolean, desc: 'Show what would be cleaned without doing it'
+    option :all, type: :boolean, desc: 'Clean all swarm resources (worktrees, branches, etc.)'
+    def cleanup
+      if options[:dry_run]
+        say '🧽 Dry run - showing what would be cleaned:', :yellow
+        # Implementation would show what would be cleaned
+        say 'Dry run cleanup not implemented yet', :yellow
+      elsif options[:all]
+        say '🧽 Cleaning all swarm resources...', :yellow
+        results = CleanupManager.cleanup_all_swarm_resources
+        
+        say "\n✅ Cleanup completed:", :green
+        say "  Worktrees: #{results[:worktrees][:count]} processed"
+        say "  Branches: #{results[:branches][:count]} processed"
+        say "  Temp files: #{results[:temp_files][:files_removed]} removed"
+      else
+        say 'Please specify --all or --dry-run', :red
+        say 'Use --help for more information'
+      end
     end
   end
 end

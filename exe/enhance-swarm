@@ -3,4 +3,28 @@
 
 require 'enhance_swarm'
 
-EnhanceSwarm::CLI.start(ARGV)
+# Setup signal handling for graceful shutdown
+EnhanceSwarm::SignalHandler.setup
+
+# Initialize structured logging
+if ENV['ENHANCE_SWARM_JSON_LOGS'] == 'true'
+  EnhanceSwarm::Logger.info("Starting EnhanceSwarm v#{EnhanceSwarm::VERSION} with JSON logging")
+end
+
+begin
+  EnhanceSwarm::CLI.start(ARGV)
+rescue Interrupt
+  # Handle Ctrl+C gracefully
+  puts "\n🛑 Operation cancelled by user"
+  exit(1)
+rescue StandardError => e
+  EnhanceSwarm::Logger.error("Unhandled error: #{e.message}")
+  EnhanceSwarm::Logger.error("Backtrace: #{e.backtrace.join("\n")}")
+  
+  if ENV['ENHANCE_SWARM_DEBUG'] == 'true'
+    raise
+  else
+    puts "❌ An error occurred. Run with ENHANCE_SWARM_DEBUG=true for details.".colorize(:red)
+    exit(1)
+  end
+end
