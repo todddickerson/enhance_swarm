@@ -693,7 +693,288 @@ module EnhanceSwarm
       end
     end
 
+    desc 'recover', 'Intelligent error recovery and analysis'
+    option :analyze, type: :string, desc: 'Analyze specific error message'
+    option :explain, type: :string, desc: 'Get human-readable explanation of error'
+    option :stats, type: :boolean, desc: 'Show error recovery statistics'
+    option :learn, type: :string, desc: 'Learn from manual recovery (provide error message)'
+    option :steps, type: :array, desc: 'Recovery steps taken (used with --learn)'
+    option :cleanup, type: :boolean, desc: 'Clean up old error recovery data'
+    def recover
+      error_recovery = ErrorRecovery.instance
+      
+      if options[:analyze]
+        analyze_error_command(options[:analyze], error_recovery)
+      elsif options[:explain]
+        explain_error_command(options[:explain], error_recovery)
+      elsif options[:stats]
+        show_recovery_stats(error_recovery)
+      elsif options[:learn] && options[:steps]
+        learn_recovery_command(options[:learn], options[:steps], error_recovery)
+      elsif options[:cleanup]
+        cleanup_error_data(error_recovery)
+      else
+        show_recovery_help
+      end
+    end
+
+    desc 'troubleshoot', 'Interactive troubleshooting assistant'
+    option :agent, type: :string, desc: 'Troubleshoot specific agent by ID'
+    option :recent, type: :boolean, desc: 'Troubleshoot recent failures'
+    option :interactive, type: :boolean, default: true, desc: 'Interactive mode'
+    def troubleshoot
+      say "🔧 EnhanceSwarm Troubleshooting Assistant", :cyan
+      
+      if options[:agent]
+        troubleshoot_agent(options[:agent])
+      elsif options[:recent]
+        troubleshoot_recent_failures
+      else
+        interactive_troubleshooting
+      end
+    end
+
     private
+    
+    def analyze_error_command(error_message, error_recovery)
+      # Create a mock error for analysis
+      mock_error = StandardError.new(error_message)
+      
+      say "\n🔍 Analyzing error: #{error_message}", :blue
+      
+      analysis = error_recovery.analyze_error(mock_error, { source: 'cli_analysis' })
+      
+      say "\n📊 Error Analysis:", :green
+      say "  Type: #{analysis[:error][:type]}"
+      say "  Auto-recoverable: #{analysis[:auto_recoverable] ? 'Yes' : 'No'}"
+      
+      if analysis[:patterns].any?
+        say "\n🔎 Matching Patterns:", :yellow
+        analysis[:patterns].first(3).each_with_index do |pattern, index|
+          say "  #{index + 1}. #{pattern[:explanation]} (#{(pattern[:confidence] * 100).round}% confidence)"
+        end
+      end
+      
+      if analysis[:suggestions].any?
+        say "\n💡 Recovery Suggestions:", :blue
+        analysis[:suggestions].first(5).each_with_index do |suggestion, index|
+          auto_indicator = suggestion[:auto_executable] ? '🤖' : '👤'
+          confidence = suggestion[:confidence] ? " (#{(suggestion[:confidence] * 100).round}%)" : ""
+          say "  #{index + 1}. #{auto_indicator} #{suggestion[:description]}#{confidence}"
+        end
+      end
+    end
+    
+    def explain_error_command(error_message, error_recovery)
+      mock_error = StandardError.new(error_message)
+      
+      say "\n📖 Error Explanation: #{error_message}", :blue
+      
+      explanation = error_recovery.explain_error(mock_error, { source: 'cli_explanation' })
+      
+      say "\n#{explanation[:explanation]}", :white
+      say "\n🔍 Likely Cause:", :yellow
+      say "  #{explanation[:likely_cause]}"
+      
+      if explanation[:prevention_tips].any?
+        say "\n🛡️  Prevention Tips:", :green
+        explanation[:prevention_tips].each_with_index do |tip, index|
+          say "  #{index + 1}. #{tip}"
+        end
+      end
+    end
+    
+    def show_recovery_stats(error_recovery)
+      stats = error_recovery.recovery_statistics
+      
+      say "\n📊 Error Recovery Statistics:", :green
+      say "  Total errors processed: #{stats[:total_errors_processed]}"
+      say "  Successful automatic recoveries: #{stats[:successful_automatic_recoveries]}"
+      say "  Recovery success rate: #{stats[:recovery_success_rate]}%"
+      say "  Recovery patterns learned: #{stats[:recovery_patterns_learned]}"
+      
+      if stats[:most_common_errors].any?
+        say "\n🔢 Most Common Error Types:", :blue
+        stats[:most_common_errors].each do |error_type, count|
+          say "  #{error_type}: #{count} occurrences"
+        end
+      end
+    end
+    
+    def learn_recovery_command(error_message, recovery_steps, error_recovery)
+      mock_error = StandardError.new(error_message)
+      
+      say "\n🧠 Learning from manual recovery...", :blue
+      say "  Error: #{error_message}"
+      say "  Steps: #{recovery_steps.join(' → ')}"
+      
+      error_recovery.learn_from_manual_recovery(
+        mock_error, 
+        recovery_steps, 
+        { source: 'cli_learning', timestamp: Time.now.iso8601 }
+      )
+      
+      say "✅ Recovery pattern learned successfully!", :green
+    end
+    
+    def cleanup_error_data(error_recovery)
+      say "🧹 Cleaning up old error recovery data...", :blue
+      
+      error_recovery.cleanup_old_data(30) # Keep last 30 days
+      
+      say "✅ Cleanup completed", :green
+    end
+    
+    def show_recovery_help
+      say "\n🔧 Error Recovery Commands:", :blue
+      say "  enhance-swarm recover --analyze 'error message'     # Analyze specific error"
+      say "  enhance-swarm recover --explain 'error message'     # Get error explanation"
+      say "  enhance-swarm recover --stats                       # Show recovery statistics"
+      say "  enhance-swarm recover --learn 'error' --steps step1 step2  # Learn from manual recovery"
+      say "  enhance-swarm recover --cleanup                     # Clean up old data"
+    end
+    
+    def troubleshoot_agent(agent_id)
+      say "\n🔍 Troubleshooting agent: #{agent_id}", :blue
+      
+      # This would integrate with actual agent monitoring
+      say "Agent troubleshooting not yet implemented for specific agents", :yellow
+      say "Use 'enhance-swarm status' to check overall agent health"
+    end
+    
+    def troubleshoot_recent_failures
+      say "\n🔍 Analyzing recent failures...", :blue
+      
+      # This would analyze recent error logs and agent failures
+      say "Recent failure analysis not yet implemented", :yellow
+      say "Use 'enhance-swarm recover --stats' to see error recovery statistics"
+    end
+    
+    def interactive_troubleshooting
+      say "\n🔧 Interactive Troubleshooting Mode", :cyan
+      say "─" * 40
+      
+      loop do
+        say "\nWhat would you like to troubleshoot?", :blue
+        say "1. Recent agent failures"
+        say "2. Configuration issues"
+        say "3. Dependency problems"
+        say "4. Performance issues"
+        say "5. Exit"
+        
+        choice = ask("Enter your choice (1-5):", :yellow)
+        
+        case choice.strip
+        when '1'
+          troubleshoot_recent_failures
+        when '2'
+          troubleshoot_configuration
+        when '3'
+          troubleshoot_dependencies
+        when '4'
+          troubleshoot_performance
+        when '5'
+          say "👋 Exiting troubleshooting mode", :green
+          break
+        else
+          say "❌ Invalid choice. Please enter 1-5.", :red
+        end
+      end
+    end
+    
+    def troubleshoot_configuration
+      say "\n⚙️  Configuration Troubleshooting", :blue
+      
+      # Check for common configuration issues
+      config_file = '.enhance_swarm.yml'
+      
+      if File.exist?(config_file)
+        say "✅ Configuration file found: #{config_file}", :green
+        
+        begin
+          config = YAML.load_file(config_file)
+          say "✅ Configuration file is valid YAML", :green
+          
+          # Basic validation
+          issues = []
+          issues << "Missing project_name" unless config['project_name']
+          issues << "Missing technology_stack" unless config['technology_stack']
+          
+          if issues.any?
+            say "⚠️  Configuration issues found:", :yellow
+            issues.each { |issue| say "  - #{issue}", :red }
+            say "\nUse 'enhance-swarm smart-config --apply' to generate optimal configuration", :blue
+          else
+            say "✅ Configuration appears to be valid", :green
+          end
+          
+        rescue StandardError => e
+          say "❌ Configuration file has syntax errors: #{e.message}", :red
+          say "Fix the YAML syntax or regenerate with 'enhance-swarm smart-config --apply'", :blue
+        end
+      else
+        say "❌ No configuration file found", :red
+        say "Run 'enhance-swarm init' or 'enhance-swarm smart-config --apply' to create one", :blue
+      end
+    end
+    
+    def troubleshoot_dependencies
+      say "\n📦 Dependency Troubleshooting", :blue
+      
+      # Check dependency validation
+      begin
+        validation_results = DependencyValidator.validate_all
+        
+        validation_results[:results].each do |tool, result|
+          status = result[:passed] ? '✅' : '❌'
+          say "  #{status} #{tool.capitalize}: #{result[:version] || 'Not found'}"
+          
+          if !result[:passed] && result[:error]
+            say "    Error: #{result[:error]}", :red
+          end
+        end
+        
+        unless validation_results[:passed]
+          say "\n💡 Suggested fixes:", :blue
+          say "  - Install missing dependencies using your system package manager"
+          say "  - Update PATH environment variable if tools are installed but not found"
+          say "  - Run 'enhance-swarm doctor --detailed' for more information"
+        end
+        
+      rescue StandardError => e
+        say "❌ Could not validate dependencies: #{e.message}", :red
+      end
+    end
+    
+    def troubleshoot_performance
+      say "\n⚡ Performance Troubleshooting", :blue
+      
+      # Basic system health check
+      begin
+        health = system_health_summary
+        
+        if health[:issues].any?
+          say "⚠️  Performance issues detected:", :yellow
+          health[:issues].each { |issue| say "  - #{issue}", :red }
+          
+          say "\n💡 Suggested fixes:", :blue
+          say "  - Run 'enhance-swarm cleanup --all' to clean up stale resources"
+          say "  - Reduce max_concurrent_agents in configuration"
+          say "  - Close other memory-intensive applications"
+        else
+          say "✅ No obvious performance issues detected", :green
+        end
+        
+        # Show current concurrency settings
+        concurrency = SmartDefaults.suggest_concurrency_settings
+        say "\n🎯 Recommended Concurrency Settings:", :blue
+        say "  Max concurrent agents: #{concurrency[:max_concurrent_agents]}"
+        say "  Monitor interval: #{concurrency[:monitor_interval]}s"
+        
+      rescue StandardError => e
+        say "❌ Could not analyze performance: #{e.message}", :red
+      end
+    end
 
     def test_notifications
       notification_manager = NotificationManager.instance
