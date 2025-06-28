@@ -28,8 +28,12 @@ module EnhanceSwarm
     option :dry_run, type: :boolean, desc: 'Show what would be done without executing'
     option :follow, type: :boolean, default: false, desc: 'Stream live output from all agents'
     option :control_agent, type: :boolean, default: true, desc: 'Use Control Agent for coordination'
+    option :notifications, type: :boolean, default: true, desc: 'Enable smart notifications and interrupts'
     def enhance
       say '🎯 ENHANCE Protocol Activated!', :green
+
+      # Setup notifications and interrupts
+      setup_notifications_and_interrupts if options[:notifications]
 
       if options[:control_agent] && !options[:dry_run]
         enhance_with_control_agent
@@ -439,6 +443,153 @@ module EnhanceSwarm
         if remaining > 0
           puts "⏱️  Estimated completion: #{eta.strftime('%H:%M:%S')} (#{(remaining/60).round}m remaining)"
         end
+      end
+    end
+
+    def setup_notifications_and_interrupts
+      # Enable notifications
+      notification_manager = NotificationManager.instance
+      notification_manager.enable!
+
+      # Setup interrupt handler
+      @interrupt_handler = InterruptHandler.new(notification_manager)
+      @interrupt_handler.enable_interrupts!
+
+      # Setup signal handlers for graceful shutdown
+      setup_signal_handlers
+    end
+
+    def setup_signal_handlers
+      Signal.trap('INT') do
+        puts "\n⚠️  Interrupt received. Cleaning up agents...".colorize(:yellow)
+        
+        # Stop monitoring
+        @interrupt_handler&.stop_monitoring
+        NotificationManager.instance.stop_monitoring
+        
+        # Graceful shutdown notification
+        NotificationManager.instance.notify(
+          :intervention_needed,
+          "User interrupted operation - cleaning up agents",
+          { reason: 'user_interrupt' }
+        )
+        
+        exit(130) # Standard exit code for SIGINT
+      end
+
+      Signal.trap('TERM') do
+        puts "\n🛑 Termination signal received. Shutting down...".colorize(:red)
+        @interrupt_handler&.stop_monitoring
+        NotificationManager.instance.stop_monitoring
+        exit(143) # Standard exit code for SIGTERM
+      end
+    end
+
+    desc 'notifications', 'Manage notification settings'
+    option :enable, type: :boolean, desc: 'Enable notifications'
+    option :disable, type: :boolean, desc: 'Disable notifications'
+    option :test, type: :boolean, desc: 'Send test notification'
+    option :history, type: :boolean, desc: 'Show notification history'
+    def notifications
+      notification_manager = NotificationManager.instance
+
+      if options[:enable]
+        notification_manager.enable!
+      elsif options[:disable]
+        notification_manager.disable!
+      elsif options[:test]
+        test_notifications
+      elsif options[:history]
+        show_notification_history
+      else
+        show_notification_status
+      end
+    end
+
+    desc 'restart AGENT_ID', 'Restart a stuck or failed agent'
+    option :timeout, type: :numeric, default: 300, desc: 'Timeout for new agent (seconds)'
+    def restart(agent_id)
+      say "🔄 Restarting agent: #{agent_id}", :yellow
+      
+      # This would integrate with the InterruptHandler
+      interrupt_handler = InterruptHandler.new
+      
+      # Mock agent for demonstration
+      agent = {
+        id: agent_id,
+        role: agent_id.split('-').first,
+        pid: nil # Would be looked up
+      }
+      
+      interrupt_handler.send(:restart_agent, agent)
+    end
+
+    private
+
+    def test_notifications
+      notification_manager = NotificationManager.instance
+      
+      say "🧪 Testing notifications...", :blue
+      
+      # Test different types of notifications
+      notification_manager.agent_completed('test-backend-123', 'backend', 120, { 
+        output_path: '/tmp/test' 
+      })
+      
+      sleep(1)
+      
+      notification_manager.agent_failed('test-frontend-456', 'frontend', 
+        'Connection timeout', [
+          'Check network connectivity',
+          'Restart with longer timeout'
+        ])
+      
+      sleep(1)
+      
+      notification_manager.progress_milestone('Backend Implementation Complete', 75)
+      
+      say "✅ Test notifications sent", :green
+    end
+
+    def show_notification_history
+      notification_manager = NotificationManager.instance
+      recent = notification_manager.recent_notifications(10)
+      
+      if recent.empty?
+        say "No recent notifications", :yellow
+        return
+      end
+      
+      say "\n📋 Recent Notifications:", :blue
+      recent.each do |notification|
+        timestamp = notification[:timestamp].strftime('%H:%M:%S')
+        priority = notification[:priority].to_s.upcase
+        type = notification[:type].to_s.humanize
+        
+        color = case notification[:priority]
+                when :critical then :red
+                when :high then :yellow  
+                when :medium then :blue
+                else :white
+                end
+        
+        say "[#{timestamp}] #{priority} - #{type}: #{notification[:message]}", color
+      end
+    end
+
+    def show_notification_status
+      notification_manager = NotificationManager.instance
+      
+      say "\n🔔 Notification Status:", :blue
+      say "  Enabled: #{notification_manager.enabled? ? '✅' : '❌'}"
+      say "  Desktop: #{notification_manager.instance_variable_get(:@desktop_notifications) ? '✅' : '❌'}"
+      say "  Sound: #{notification_manager.instance_variable_get(:@sound_enabled) ? '✅' : '❌'}"
+      
+      recent_count = notification_manager.recent_notifications.count
+      say "  Recent notifications: #{recent_count}"
+      
+      if recent_count > 0
+        say "\nUse 'enhance-swarm notifications --history' to view recent notifications"
       end
     end
   end
