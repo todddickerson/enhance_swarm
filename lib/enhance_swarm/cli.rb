@@ -26,28 +26,36 @@ module EnhanceSwarm
     desc 'enhance', 'Execute the ENHANCE protocol - full multi-agent orchestration'
     option :task, type: :string, desc: 'Specific task ID to enhance'
     option :dry_run, type: :boolean, desc: 'Show what would be done without executing'
+    option :follow, type: :boolean, default: false, desc: 'Stream live output from all agents'
     def enhance
       say '🎯 ENHANCE Protocol Activated!', :green
 
       orchestrator = Orchestrator.new
       orchestrator.enhance(
         task_id: options[:task],
-        dry_run: options[:dry_run]
+        dry_run: options[:dry_run],
+        follow: options[:follow]
       )
     end
 
     desc 'spawn TASK_DESC', 'Spawn a single agent for a specific task'
     option :role, type: :string, default: 'general', desc: 'Agent role (ux/backend/frontend/qa)'
     option :worktree, type: :boolean, default: true, desc: 'Use git worktree'
+    option :follow, type: :boolean, default: false, desc: 'Stream live output from the agent'
     def spawn(task_desc)
-      say "🤖 Spawning agent for: #{task_desc}", :yellow
-
-      orchestrator = Orchestrator.new
-      orchestrator.spawn_single(
-        task: task_desc,
-        role: options[:role],
-        worktree: options[:worktree]
-      )
+      if options[:follow]
+        say "🤖 Spawning agent with live output for: #{task_desc}", :yellow
+        spawn_with_streaming(task_desc)
+      else
+        say "🤖 Spawning agent for: #{task_desc}", :yellow
+        
+        orchestrator = Orchestrator.new
+        orchestrator.spawn_single(
+          task: task_desc,
+          role: options[:role],
+          worktree: options[:worktree]
+        )
+      end
     end
 
     desc 'monitor', 'Monitor running swarm agents'
@@ -292,6 +300,32 @@ module EnhanceSwarm
       else
         AgentReviewer.print_review_report(results)
       end
+    end
+
+    private
+
+    def spawn_with_streaming(task_desc)
+      orchestrator = Orchestrator.new
+      
+      # Spawn the agent
+      pid = orchestrator.spawn_single(
+        task: task_desc,
+        role: options[:role],
+        worktree: options[:worktree]
+      )
+      
+      return unless pid
+      
+      # Start streaming output
+      agent_id = "#{options[:role]}-#{Time.now.to_i}"
+      agents = [{
+        id: agent_id,
+        pid: pid,
+        role: options[:role]
+      }]
+      
+      say "\n🔴 Live output streaming started. Press Ctrl+C to stop watching.\n", :green
+      OutputStreamer.stream_agents(agents)
     end
   end
 end

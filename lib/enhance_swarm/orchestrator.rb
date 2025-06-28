@@ -15,7 +15,7 @@ module EnhanceSwarm
       @monitor = Monitor.new
     end
 
-    def enhance(task_id: nil, dry_run: false)
+    def enhance(task_id: nil, dry_run: false, follow: false)
       puts '🎯 ENHANCE Protocol Initiated'.colorize(:green)
 
       # Step 1: Identify task
@@ -41,12 +41,16 @@ module EnhanceSwarm
       agents = break_down_task(task)
       total_tokens = agents.sum { |agent| ProgressTracker.estimate_tokens_for_operation('spawn_agent') }
       
-      ProgressTracker.track(total_steps: 100, estimated_tokens: total_tokens) do |tracker|
-        # Spawn agents (0-50% progress)
-        spawn_result = spawn_agents(agents, tracker)
-        
-        # Brief monitoring (50-100% progress)
-        monitor_with_progress(tracker, @config.monitor_timeout)
+      if follow
+        spawn_agents_with_streaming(agents)
+      else
+        ProgressTracker.track(total_steps: 100, estimated_tokens: total_tokens) do |tracker|
+          # Spawn agents (0-50% progress)
+          spawn_result = spawn_agents(agents, tracker)
+          
+          # Brief monitoring (50-100% progress)
+          monitor_with_progress(tracker, @config.monitor_timeout)
+        end
       end
 
       # Step 5: Continue with other work
@@ -82,6 +86,39 @@ module EnhanceSwarm
       end
       
       tracker.set_progress(100, message: "Monitoring complete - agents running in background")
+    end
+
+    def spawn_agents_with_streaming(agents)
+      puts "\n🤖 Spawning #{agents.count} agents with live output...".colorize(:yellow)
+      
+      spawned_agents = []
+      
+      # Spawn all agents first
+      agents.each_with_index do |agent, index|
+        sleep(2 + rand(0..2)) if index > 0 # Add jitter
+        
+        pid = spawn_single(
+          task: agent[:task],
+          role: agent[:role],
+          worktree: true
+        )
+        
+        if pid
+          agent_id = "#{agent[:role]}-#{Time.now.to_i}-#{index}"
+          spawned_agents << {
+            id: agent_id,
+            pid: pid,
+            role: agent[:role]
+          }
+        end
+      end
+      
+      return if spawned_agents.empty?
+      
+      puts "\n🔴 Live output streaming started for #{spawned_agents.count} agents. Press Ctrl+C to stop watching.\n".colorize(:green)
+      
+      # Start streaming output for all agents
+      OutputStreamer.stream_agents(spawned_agents)
     end
 
     def spawn_single(task:, role:, worktree:)
