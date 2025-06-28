@@ -27,15 +27,20 @@ module EnhanceSwarm
     option :task, type: :string, desc: 'Specific task ID to enhance'
     option :dry_run, type: :boolean, desc: 'Show what would be done without executing'
     option :follow, type: :boolean, default: false, desc: 'Stream live output from all agents'
+    option :control_agent, type: :boolean, default: true, desc: 'Use Control Agent for coordination'
     def enhance
       say '🎯 ENHANCE Protocol Activated!', :green
 
-      orchestrator = Orchestrator.new
-      orchestrator.enhance(
-        task_id: options[:task],
-        dry_run: options[:dry_run],
-        follow: options[:follow]
-      )
+      if options[:control_agent] && !options[:dry_run]
+        enhance_with_control_agent
+      else
+        orchestrator = Orchestrator.new
+        orchestrator.enhance(
+          task_id: options[:task],
+          dry_run: options[:dry_run],
+          follow: options[:follow]
+        )
+      end
     end
 
     desc 'spawn TASK_DESC', 'Spawn a single agent for a specific task'
@@ -326,6 +331,115 @@ module EnhanceSwarm
       
       say "\n🔴 Live output streaming started. Press Ctrl+C to stop watching.\n", :green
       OutputStreamer.stream_agents(agents)
+    end
+
+    def enhance_with_control_agent
+      # Determine task from options or get next priority task
+      task_description = if options[:task]
+                          "Task ID: #{options[:task]}"
+                        else
+                          ask("Enter task description:", :blue) || "Enhance the project"
+                        end
+
+      say "\n🎛️  Starting Control Agent coordination...", :yellow
+
+      begin
+        if options[:follow]
+          enhance_with_control_agent_streaming(task_description)
+        else
+          enhance_with_control_agent_progress(task_description)
+        end
+      rescue StandardError => e
+        say "❌ Control Agent coordination failed: #{e.message}", :red
+        Logger.error("Control Agent error: #{e.message}")
+      end
+    end
+
+    def enhance_with_control_agent_streaming(task_description)
+      control_agent = ControlAgent.new(task_description)
+      
+      # Start coordination in background
+      coordination_thread = control_agent.start_coordination
+      
+      say "\n🔴 Control Agent streaming started. Press Ctrl+C to stop watching.\n", :green
+      
+      # Display live coordination status
+      begin
+        loop do
+          status = control_agent.current_status
+          display_control_agent_status(status)
+          
+          break if %w[completed failed].include?(status['status'])
+          
+          sleep(3)
+        end
+      rescue Interrupt
+        say "\n\n⚠️  Stopping Control Agent coordination...", :yellow
+      ensure
+        control_agent.stop_coordination
+        coordination_thread&.join
+      end
+    end
+
+    def enhance_with_control_agent_progress(task_description)
+      ProgressTracker.track(total_steps: 100, estimated_tokens: 5000) do |tracker|
+        ControlAgent.coordinate_task(task_description) do |control_agent|
+          # Track progress with the Control Agent
+          progress_thread = control_agent.track_progress_with_streamer(tracker)
+          
+          # Monitor until completion
+          loop do
+            status = control_agent.current_status
+            break if %w[completed failed].include?(status['status'])
+            sleep(5)
+          end
+          
+          progress_thread&.join
+        end
+      end
+    end
+
+    def display_control_agent_status(status)
+      # Clear screen and show coordinated status
+      print "\e[H\e[2J"
+      
+      puts "🎛️  Control Agent Coordination".colorize(:cyan)
+      puts "Phase: #{status['phase']&.humanize || 'Unknown'}".colorize(:blue)
+      puts "Progress: #{status['progress_percentage'] || 0}%".colorize(:green)
+      puts
+      
+      # Show active agents
+      if status['active_agents']&.any?
+        puts "🔄 Active Agents:".colorize(:yellow)
+        status['active_agents'].each do |agent_id|
+          puts "  • #{agent_id}"
+        end
+        puts
+      end
+      
+      # Show completed agents  
+      if status['completed_agents']&.any?
+        puts "✅ Completed Agents:".colorize(:green)
+        status['completed_agents'].each do |agent_id|
+          puts "  • #{agent_id}"
+        end
+        puts
+      end
+      
+      # Show current message
+      if status['message']
+        puts "📝 Status: #{status['message']}".colorize(:white)
+        puts
+      end
+      
+      # Show estimated completion
+      if status['estimated_completion']
+        eta = Time.parse(status['estimated_completion'])
+        remaining = eta - Time.now
+        if remaining > 0
+          puts "⏱️  Estimated completion: #{eta.strftime('%H:%M:%S')} (#{(remaining/60).round}m remaining)"
+        end
+      end
     end
   end
 end
