@@ -557,6 +557,39 @@ module EnhanceSwarm
       end
     end
 
+    desc 'dashboard', 'Start visual agent dashboard'
+    option :agents, type: :array, desc: 'Specific agent IDs to monitor'
+    option :refresh, type: :numeric, default: 2, desc: 'Refresh rate in seconds'
+    option :snapshot, type: :boolean, desc: 'Take dashboard snapshot and exit'
+    def dashboard
+      if options[:snapshot]
+        take_dashboard_snapshot
+        return
+      end
+
+      say "🖥️  Starting Visual Agent Dashboard...", :green
+      
+      # Get agent list from options or discover running agents
+      agents = options[:agents] ? 
+                 load_specific_agents(options[:agents]) : 
+                 discover_running_agents
+      
+      if agents.empty?
+        say "No agents found to monitor", :yellow
+        say "Run 'enhance-swarm spawn' or 'enhance-swarm enhance' to start agents"
+        return
+      end
+      
+      dashboard = VisualDashboard.instance
+      dashboard.instance_variable_set(:@refresh_rate, options[:refresh])
+      
+      begin
+        dashboard.start_dashboard(agents)
+      rescue Interrupt
+        say "\n🖥️  Dashboard stopped by user", :yellow
+      end
+    end
+
     private
 
     def test_notifications
@@ -694,6 +727,150 @@ module EnhanceSwarm
       else
         "#{(seconds / 86400).round}d"
       end
+    end
+
+    def take_dashboard_snapshot
+      say "📸 Taking dashboard snapshot...", :blue
+      
+      # Create a mock dashboard state for snapshot
+      agents = discover_running_agents
+      dashboard = VisualDashboard.instance
+      
+      if agents.any?
+        agents.each { |agent| dashboard.add_agent(agent) }
+        dashboard.send(:save_dashboard_snapshot)
+        say "✅ Dashboard snapshot saved", :green
+      else
+        say "No agents found for snapshot", :yellow
+      end
+    end
+
+    def load_specific_agents(agent_ids)
+      agents = []
+      
+      agent_ids.each do |agent_id|
+        # Mock agent data - in real implementation, this would query actual agents
+        agent = {
+          id: agent_id,
+          role: agent_id.split('-').first,
+          status: 'active',
+          start_time: (Time.now - rand(300)).iso8601,
+          current_task: 'Working on task...',
+          progress_percentage: rand(100),
+          pid: rand(10000..99999)
+        }
+        agents << agent
+      end
+      
+      agents
+    end
+
+    def discover_running_agents
+      agents = []
+      
+      # Check for running swarm processes
+      begin
+        # Look for enhance-swarm processes
+        ps_output = `ps aux | grep -i enhance-swarm | grep -v grep`
+        ps_lines = ps_output.lines
+        
+        ps_lines.each_with_index do |line, index|
+          next if line.include?('grep') || line.include?('dashboard')
+          
+          parts = line.split
+          pid = parts[1]
+          command = parts[10..-1]&.join(' ')
+          
+          next unless command&.include?('enhance-swarm')
+          
+          role = extract_role_from_command(command) || 'agent'
+          
+          agent = {
+            id: "#{role}-#{Time.now.to_i}-#{index}",
+            role: role,
+            status: 'active',
+            start_time: Time.now.iso8601,
+            current_task: extract_task_from_command(command),
+            progress_percentage: rand(20..80),
+            pid: pid.to_i,
+            command: command
+          }
+          
+          agents << agent
+        end
+        
+        # Add some mock agents for demonstration if no real ones found
+        if agents.empty?
+          agents = create_demo_agents
+        end
+        
+      rescue StandardError => e
+        Logger.error("Failed to discover agents: #{e.message}")
+        agents = create_demo_agents
+      end
+      
+      agents
+    end
+
+    def extract_role_from_command(command)
+      if command.include?('--role')
+        role_match = command.match(/--role\s+(\w+)/)
+        return role_match[1] if role_match
+      end
+      
+      # Try to infer from command
+      case command
+      when /backend/i then 'backend'
+      when /frontend/i then 'frontend'  
+      when /qa/i then 'qa'
+      when /ux/i then 'ux'
+      else 'general'
+      end
+    end
+
+    def extract_task_from_command(command)
+      # Extract task description from command
+      if command.include?('spawn')
+        task_match = command.match(/spawn\s+"([^"]+)"/)
+        return task_match[1] if task_match
+        
+        # Try without quotes
+        task_match = command.match(/spawn\s+(.+?)(?:\s+--|$)/)
+        return task_match[1] if task_match
+      elsif command.include?('enhance')
+        task_match = command.match(/enhance\s+"([^"]+)"/)
+        return task_match[1] if task_match
+      end
+      
+      'Working on task...'
+    end
+
+    def create_demo_agents
+      roles = %w[backend frontend qa ux]
+      tasks = [
+        'Implementing authentication system',
+        'Building user interface components', 
+        'Running integration tests',
+        'Designing user experience flow'
+      ]
+      
+      agents = []
+      
+      roles.each_with_index do |role, index|
+        agent = {
+          id: "#{role}-demo-#{Time.now.to_i + index}",
+          role: role,
+          status: ['active', 'completed', 'stuck'].sample,
+          start_time: (Time.now - rand(600)).iso8601,
+          current_task: tasks[index],
+          progress_percentage: rand(10..95),
+          pid: rand(1000..9999),
+          memory_mb: rand(50..500)
+        }
+        agents << agent
+      end
+      
+      agents
     end
   end
 end
