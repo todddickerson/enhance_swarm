@@ -237,6 +237,238 @@ enhance-swarm notifications --history
 # [14:25:30] MEDIUM - Progress Milestone: 📍 Backend complete (75% complete)
 ```
 
+## 💬 Quick Agent Communication
+
+Seamless communication between you and running agents:
+
+```bash
+# Interactive communication mode
+enhance-swarm communicate --interactive
+
+# List pending messages from agents
+enhance-swarm communicate --list
+
+# Respond to specific agent question
+enhance-swarm communicate --respond msg_123 --response "Use PostgreSQL"
+
+# View communication history
+enhance-swarm communicate --history
+```
+
+**Communication Features:**
+
+- **Real-time Messaging**: Agents can ask questions while working
+- **Non-blocking**: Continue other work while agents wait for responses
+- **Message Types**: Questions, status updates, progress reports, decisions
+- **Quick Actions**: Pre-defined responses for common agent questions
+- **Timeout Handling**: Default responses when user is unavailable
+- **File-based**: Cross-process communication that persists across sessions
+
+**Example Agent Communication:**
+
+```bash
+📬 Agent Communication: 2 pending messages
+
+[12:34:56] QUESTION from backend-auth-123:
+"Should I use Devise or build custom authentication? 
+The project already has some user management code."
+
+Quick actions: [1] Use Devise  [2] Custom auth  [3] Analyze existing
+Your response: 2
+
+✅ Response sent to backend-auth-123
+```
+
+## 🖥️ Visual Agent Dashboard
+
+Real-time monitoring with an interactive visual dashboard:
+
+```bash
+# Start dashboard for all running agents
+enhance-swarm dashboard
+
+# Monitor specific agents
+enhance-swarm dashboard --agents backend-auth-123 frontend-ui-456
+
+# Take a snapshot and exit
+enhance-swarm dashboard --snapshot
+
+# Custom refresh rate
+enhance-swarm dashboard --refresh 1
+```
+
+**Dashboard Features:**
+
+- **Agent Status Grid**: Visual status indicators for all agents
+- **Progress Bars**: Real-time progress tracking with percentages
+- **System Resources**: Memory usage, process count, message queue
+- **Interactive Controls**: Pause, refresh, help, detailed views
+- **Health Indicators**: Visual agent health with color coding
+- **Terminal UI**: Full terminal-based interface with keyboard shortcuts
+
+**Dashboard Interface:**
+
+```
+┌─── 🖥️  EnhanceSwarm Visual Dashboard ─────────────────────────────────┐
+│ 14:32:15 │ Agents: 4 │ Active: 2 │ Updated: 3s ago │
+└────────────────────────────────────────────────────────────────────────┘
+
+📊 Coordination Status
+─────────────────────────────────────────
+Phase: Frontend Implementation
+Progress: ████████░░░░░░░░░░░░░░░░░░░░ 75%
+Active: frontend-ui-456
+Completed: backend-auth-123, ux-design-789
+
+🤖 Agent Status Grid
+────────────────────────────────────────────────────────────────
+┌────────────────┐ ┌────────────────┐ ┌────────────────┐ ┌────────────────┐
+│ backend        │ │ frontend       │ │ qa             │ │ ux             │
+│ 🟢 Active      │ │ ✅ Done        │ │ 🔄 Starting    │ │ ✅ Done        │
+│ ████████░░░░   │ │ ██████████████ │ │                │ │ ██████████████ │
+│ 2m15s          │ │ 4m32s          │ │ 12s            │ │ 8m45s          │
+└────────────────┘ └────────────────┘ └────────────────┘ └────────────────┘
+
+📈 System Resources
+──────────────────────────────
+Memory: ██████████░░░░░░░░░░ 8.2GB/16GB
+Processes: 3 active
+Messages: 1 pending
+
+🎮 Controls
+───────────────
+[q] Quit  [r] Refresh  [p] Pause  [c] Clear  [h] Help
+```
+
+## 🧠 Smart Defaults & Auto-Actions
+
+Intelligent project analysis and automation:
+
+```bash
+# Get smart suggestions for next actions
+enhance-swarm suggest
+
+# Auto-run high-priority suggestions
+enhance-swarm suggest --auto-run
+
+# Generate optimal configuration
+enhance-swarm smart-config --apply
+
+# Show context-aware suggestions
+enhance-swarm suggest --context "need to improve performance"
+```
+
+**Smart Features:**
+
+- **Role Detection**: Automatically suggest best agent role for tasks
+- **Project Analysis**: Detect technology stack and suggest optimal settings
+- **Auto-cleanup**: Intelligent cleanup of stale resources
+- **Pattern Learning**: Learn from user preferences and past actions
+- **Context-aware Commands**: Suggest appropriate commands based on project state
+- **Concurrency Optimization**: Recommend optimal agent counts based on system resources
+
+**Example Smart Suggestions:**
+
+```bash
+🧠 Analyzing project and generating smart suggestions...
+
+💡 Smart Suggestions:
+
+1. [HIGH] Stale worktrees detected
+   Command: enhance-swarm cleanup --all
+
+2. [MEDIUM] Code changes detected, tests should be run  
+   Command: npm test
+
+3. [LOW] End of day cleanup
+   Command: enhance-swarm cleanup --all
+
+🤖 Auto-detected role: backend (use --role to override)
+✅ Auto-cleaned 3 stale resources
+```
+
+## 🔧 Better Error Recovery
+
+Intelligent error analysis and automatic recovery:
+
+```bash
+# Analyze specific errors
+enhance-swarm recover --analyze "Connection timeout after 30 seconds"
+
+# Get human-readable error explanations
+enhance-swarm recover --explain "No such file or directory"
+
+# View error recovery statistics
+enhance-swarm recover --stats
+
+# Learn from manual recovery steps
+enhance-swarm recover --learn "Build failed" --steps "bundle install" "restart server"
+
+# Interactive troubleshooting assistant
+enhance-swarm troubleshoot
+```
+
+**Error Recovery Features:**
+
+- **Pattern Recognition**: Learn from error patterns and successful recoveries
+- **Automatic Recovery**: Attempt common fixes automatically
+- **Recovery Strategies**: Network retry, file creation, dependency installation
+- **Success Tracking**: Monitor recovery success rates and improve strategies
+- **Manual Learning**: Capture and reuse manual recovery procedures
+- **Context Analysis**: Consider project context when suggesting fixes
+
+**Error Analysis Output:**
+
+```bash
+🔍 Analyzing error: Connection timeout after 30 seconds
+
+📊 Error Analysis:
+  Type: StandardError
+  Auto-recoverable: Yes
+
+🔎 Matching Patterns:
+  1. Network timeout pattern (85% confidence)
+
+💡 Recovery Suggestions:
+  1. 🤖 Retry with exponential backoff (85%)
+  2. 👤 Check network connectivity (70%)
+  3. 🤖 Increase timeout and retry (60%)
+
+📖 Error Explanation: Connection timeout after 30 seconds
+
+This typically occurs when a network request takes longer than the configured timeout period.
+
+🔍 Likely Cause:
+  Network latency or server overload
+
+🛡️  Prevention Tips:
+  1. Implement retry logic with exponential backoff
+  2. Monitor network connectivity before making requests
+  3. Configure appropriate timeout values for your use case
+  4. Consider using connection pooling for better performance
+```
+
+**Interactive Troubleshooting:**
+
+```bash
+🔧 Interactive Troubleshooting Mode
+────────────────────────────────────────
+
+What would you like to troubleshoot?
+1. Recent agent failures
+2. Configuration issues  
+3. Dependency problems
+4. Performance issues
+5. Exit
+
+Enter your choice (1-5): 2
+
+⚙️  Configuration Troubleshooting
+✅ Configuration file found: .enhance_swarm.yml
+✅ Configuration file is valid YAML
+✅ Configuration appears to be valid
+```
+
 ## 🧠 Core Commands & Examples
 
 ### Multi-Agent Orchestration

@@ -511,10 +511,16 @@ module EnhanceSwarm
         filename = File.basename(file_path)
         directory = File.dirname(file_path)
         extension = File.extname(file_path)
+        basename_without_ext = File.basename(filename, extension)
         
         # Search for similar files
         similar_files = Dir.glob("#{directory}/**/*#{extension}").select do |f|
-          File.basename(f).include?(File.basename(filename, extension))
+          existing_basename = File.basename(f, extension)
+          # Check if either file contains parts of the other's name
+          basename_without_ext.include?(existing_basename) || 
+          existing_basename.include?(basename_without_ext) ||
+          # Also check for common prefixes (e.g., "test" in both "test_new" and "test_file")
+          common_prefix_length(basename_without_ext, existing_basename) >= 3
         end
         
         { success: true, similar_files: similar_files }
@@ -737,6 +743,16 @@ module EnhanceSwarm
       ]
       
       Digest::SHA256.hexdigest(key_parts.join('|'))[0, 16]
+    end
+
+    def common_prefix_length(str1, str2)
+      return 0 if str1.nil? || str2.nil?
+      
+      min_length = [str1.length, str2.length].min
+      (0...min_length).each do |i|
+        return i if str1[i].downcase != str2[i].downcase
+      end
+      min_length
     end
 
     # Class methods for singleton access
