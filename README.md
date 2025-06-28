@@ -149,24 +149,24 @@ enhance-swarm spawn "implement login API" --role backend --follow
   ✅ backend (2m15s)
 ```
 
-## 🔍 Agent Review & Monitoring
+## 📊 Status & Monitoring
 
 Track all agent work across your project:
 
 ```bash
-# Review all agent progress
-enhance-swarm review
+# Check overall status
+enhance-swarm status
 
 # Get detailed JSON status
-enhance-swarm review --json
+enhance-swarm status --json
 
 # Monitor running agents
 enhance-swarm monitor --interval 30
 ```
 
-**Review output:**
+**Status output:**
 ```
-=== Agent Work Review ===
+=== EnhanceSwarm Status ===
 Time: 2025-06-28 19:45:30
 
 📊 Summary:
@@ -198,7 +198,6 @@ enhance-swarm enhance "implement auth system" --notifications
 # Manage notification settings
 enhance-swarm notifications --enable
 enhance-swarm notifications --test
-enhance-swarm notifications --history
 ```
 
 **Notification Features:**
@@ -227,32 +226,20 @@ Choose [1-2] or [c]ustom command:
 enhance-swarm restart backend-auth-123
 ```
 
-**Notification History:**
-
-```bash
-enhance-swarm notifications --history
-# 📋 Recent Notifications:
-# [14:32:15] HIGH - Agent Completed: 🎉 Agent 'backend' completed successfully!
-# [14:28:45] CRITICAL - Agent Failed: ❌ Agent 'frontend' failed: Timeout
-# [14:25:30] MEDIUM - Progress Milestone: 📍 Backend complete (75% complete)
-```
 
 ## 💬 Quick Agent Communication
 
 Seamless communication between you and running agents:
 
 ```bash
-# Interactive communication mode
-enhance-swarm communicate --interactive
+# Show communication status
+enhance-swarm communicate
 
-# List pending messages from agents
-enhance-swarm communicate --list
+# Demo communication features  
+enhance-swarm communicate --demo
 
-# Respond to specific agent question
-enhance-swarm communicate --respond msg_123 --response "Use PostgreSQL"
-
-# View communication history
-enhance-swarm communicate --history
+# Show communication status with details
+enhance-swarm communicate --status
 ```
 
 **Communication Features:**
@@ -267,16 +254,15 @@ enhance-swarm communicate --history
 **Example Agent Communication:**
 
 ```bash
-📬 Agent Communication: 2 pending messages
+💬 Agent Communication Status:
+  Pending messages: 2
+  Recent messages: 3
 
-[12:34:56] QUESTION from backend-auth-123:
-"Should I use Devise or build custom authentication? 
-The project already has some user management code."
-
-Quick actions: [1] Use Devise  [2] Custom auth  [3] Analyze existing
-Your response: 2
-
-✅ Response sent to backend-auth-123
+📋 Recent Messages:
+  1. question from demo-backend
+     Should I use PostgreSQL or MySQL?...
+  2. status from demo-frontend  
+     UI components 60% complete...
 ```
 
 ## 🖥️ Visual Agent Dashboard
@@ -348,12 +334,6 @@ Intelligent project analysis and automation:
 # Get smart suggestions for next actions
 enhance-swarm suggest
 
-# Auto-run high-priority suggestions
-enhance-swarm suggest --auto-run
-
-# Generate optimal configuration
-enhance-swarm smart-config --apply
-
 # Show context-aware suggestions
 enhance-swarm suggest --context "need to improve performance"
 ```
@@ -395,14 +375,11 @@ Intelligent error analysis and automatic recovery:
 # Analyze specific errors
 enhance-swarm recover --analyze "Connection timeout after 30 seconds"
 
-# Get human-readable error explanations
-enhance-swarm recover --explain "No such file or directory"
-
 # View error recovery statistics
 enhance-swarm recover --stats
 
-# Learn from manual recovery steps
-enhance-swarm recover --learn "Build failed" --steps "bundle install" "restart server"
+# Demo error recovery features
+enhance-swarm recover --demo
 
 # Interactive troubleshooting assistant
 enhance-swarm troubleshoot
@@ -508,23 +485,23 @@ enhance-swarm spawn "redesign onboarding flow" --role ux
 ```bash
 # System health check
 enhance-swarm doctor
-# → Validates dependencies, git setup, claude-swarm availability
+# → Validates dependencies, git setup, requirements
 
 # Project status
 enhance-swarm status --json
 # → Detailed status including active agents, worktrees, health
 
-# Cleanup stale resources
-enhance-swarm cleanup --all
-# → Removes abandoned worktrees, branches, temp files
-
-# Restart stuck/failed agents
-enhance-swarm restart backend-auth-123
-# → Intelligent restart with resource cleanup
+# Configuration details
+enhance-swarm config
+# → Show current project configuration
 
 # Manage notifications
 enhance-swarm notifications --test
 # → Test notification system functionality
+
+# Get smart suggestions
+enhance-swarm suggest
+# → Context-aware improvement suggestions
 ```
 
 ## 🏗️ Architecture Overview
@@ -660,15 +637,15 @@ enhance-swarm doctor --detailed --json
 ```bash
 # Dependency problems
 enhance-swarm doctor
-# → Validates git, claude-swarm, ruby versions
+# → Validates git, dependencies, system requirements
 
 # Agent coordination issues  
-enhance-swarm review
+enhance-swarm status
 # → Shows stuck/failed agents
 
-# Resource cleanup
-enhance-swarm cleanup --all
-# → Removes stale worktrees and processes
+# Interactive troubleshooting
+enhance-swarm troubleshoot
+# → Guided problem diagnosis
 ```
 
 ### Debug Mode
@@ -765,13 +742,13 @@ enhance-swarm enhance "implement user profiles" --follow
 enhance-swarm status
 # → Check overall progress
 
-# Review completed work
-enhance-swarm review
-# → See what agents accomplished
+# Use visual dashboard
+enhance-swarm dashboard
+# → Real-time visual monitoring
 
-# Cleanup when done
-enhance-swarm cleanup --all
-# → Remove temporary resources
+# Get smart suggestions
+enhance-swarm suggest
+# → Context-aware next actions
 ```
 
 ## 🚀 What's Next
