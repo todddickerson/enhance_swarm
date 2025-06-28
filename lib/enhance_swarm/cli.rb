@@ -279,5 +279,19 @@ module EnhanceSwarm
         say 'Use --help for more information'
       end
     end
+
+    desc 'review', 'Review agent work in progress and completed tasks'
+    option :json, type: :boolean, desc: 'Output results in JSON format'
+    def review
+      say '🔍 Reviewing agent work...', :yellow
+      
+      results = AgentReviewer.review_all_work
+      
+      if options[:json]
+        puts JSON.pretty_generate(results)
+      else
+        AgentReviewer.print_review_report(results)
+      end
+    end
   end
 end

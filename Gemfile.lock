@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    enhance_swarm (0.1.0)
+    enhance_swarm (0.1.1)
       colorize (~> 1.1)
       listen (~> 3.8)
       parallel (~> 1.24)

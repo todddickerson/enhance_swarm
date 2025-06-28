@@ -37,13 +37,17 @@ module EnhanceSwarm
       @task_manager.move_task(task[:id], 'active')
       puts '✅ Task moved to active'.colorize(:green)
 
-      # Step 3: Break down and spawn agents
+      # Step 3: Break down and spawn agents with progress tracking
       agents = break_down_task(task)
-      spawn_agents(agents)
-
-      # Step 4: Brief monitoring (2 minutes max)
-      puts "\n👀 Monitoring for #{@config.monitor_timeout} seconds...".colorize(:yellow)
-      @monitor.watch(timeout: @config.monitor_timeout)
+      total_tokens = agents.sum { |agent| ProgressTracker.estimate_tokens_for_operation('spawn_agent') }
+      
+      ProgressTracker.track(total_steps: 100, estimated_tokens: total_tokens) do |tracker|
+        # Spawn agents (0-50% progress)
+        spawn_result = spawn_agents(agents, tracker)
+        
+        # Brief monitoring (50-100% progress)
+        monitor_with_progress(tracker, @config.monitor_timeout)
+      end
 
       # Step 5: Continue with other work
       puts "\n💡 Agents working in background. Check back later with:".colorize(:blue)
@@ -51,6 +55,33 @@ module EnhanceSwarm
       puts '   enhance-swarm status'
 
       # Return control to user for other work
+    end
+
+    def monitor_with_progress(tracker, timeout_seconds)
+      start_time = Time.now
+      last_check = start_time
+      check_interval = 5 # Check every 5 seconds
+      
+      while (Time.now - start_time) < timeout_seconds
+        elapsed = Time.now - start_time
+        progress = 50 + (elapsed / timeout_seconds * 50).to_i # 50-100% progress
+        
+        # Get current status
+        status = @monitor.status
+        active_count = status[:active_agents]
+        
+        tracker.set_progress(progress,
+                           message: "Monitoring #{active_count} active agents...",
+                           operation: 'monitor',
+                           details: { 
+                             active_agents: active_count,
+                             elapsed: "#{elapsed.round}s"
+                           })
+        
+        sleep(check_interval)
+      end
+      
+      tracker.set_progress(100, message: "Monitoring complete - agents running in background")
     end
 
     def spawn_single(task:, role:, worktree:)
@@ -113,12 +144,27 @@ module EnhanceSwarm
       agents
     end
 
-    def spawn_agents(agents)
-      puts "\n🤖 Spawning #{agents.count} agents...".colorize(:yellow)
+    def spawn_agents(agents, tracker = nil)
+      if tracker
+        tracker.update_status("Spawning #{agents.count} agents...", operation: 'spawn_agents')
+      else
+        puts "\n🤖 Spawning #{agents.count} agents...".colorize(:yellow)
+      end
+      
       spawned_agents = []
       failed_agents = []
+      total_estimated_tokens = agents.sum { |agent| ProgressTracker.estimate_tokens_for_operation('spawn_agent') }
 
       agents.each_with_index do |agent, index|
+        # Update progress if tracker available
+        if tracker
+          progress = (index.to_f / agents.count * 50).to_i # First 50% for spawning
+          tracker.set_progress(progress, 
+                              message: "Spawning #{agent[:role]} agent...",
+                              agent: agent[:role],
+                              operation: 'spawn')
+        end
+
         # Add jitter to prevent resource contention
         sleep(2 + rand(0..2)) if index > 0
         
@@ -130,12 +176,17 @@ module EnhanceSwarm
         
         if result
           spawned_agents << { **agent, pid: result }
+          tracker&.add_tokens(ProgressTracker.estimate_tokens_for_operation('spawn_agent'))
         else
           failed_agents << agent
         end
       end
 
-      if failed_agents.empty?
+      if tracker
+        tracker.set_progress(50, 
+                           message: "All agents spawned, monitoring...",
+                           operation: 'monitor')
+      elsif failed_agents.empty?
         puts '✅ All agents spawned'.colorize(:green)
       else
         puts "⚠️ #{spawned_agents.size}/#{agents.size} agents spawned successfully".colorize(:yellow)
