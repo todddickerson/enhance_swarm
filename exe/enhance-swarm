@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require "enhance_swarm"
+require 'enhance_swarm'
 
 EnhanceSwarm::CLI.start(ARGV)
