@@ -192,6 +192,39 @@ The gem implements several strategies:
 - Minimal context sharing between agents
 - Efficient monitoring patterns
 
+## Security Features
+
+EnhanceSwarm implements enterprise-grade security practices:
+
+### Command Execution Security
+- **Secure Command Executor**: All shell commands use `Open3.capture3` with proper argument escaping
+- **Input Sanitization**: Configuration values are validated and dangerous characters stripped
+- **Command Validation**: Only whitelisted command patterns are allowed
+- **Timeout Protection**: All external commands have configurable timeouts
+
+### Configuration Security
+- **YAML Validation**: Safe YAML loading with type validation
+- **Path Sanitization**: File paths are validated to prevent directory traversal
+- **Command Filtering**: Dangerous shell patterns (rm -rf, eval, etc.) are blocked
+
+### Error Handling
+- **Graceful Degradation**: Secure fallbacks when external tools are unavailable
+- **Comprehensive Logging**: Security events are logged for audit trails
+- **Exception Safety**: Proper error boundaries prevent information leakage
+
+## Testing
+
+Run the test suite:
+```bash
+bundle exec rspec
+```
+
+The gem includes comprehensive tests covering:
+- Security-critical command execution
+- Input validation and sanitization
+- Error handling and edge cases
+- Configuration loading and validation
+
 ## Troubleshooting
 
 Run diagnostics:
