@@ -29,11 +29,25 @@ module EnhanceSwarm
     option :follow, type: :boolean, default: false, desc: 'Stream live output from all agents'
     option :control_agent, type: :boolean, default: true, desc: 'Use Control Agent for coordination'
     option :notifications, type: :boolean, default: true, desc: 'Enable smart notifications and interrupts'
+    option :auto_cleanup, type: :boolean, default: true, desc: 'Auto-cleanup stale resources before starting'
     def enhance
       say '🎯 ENHANCE Protocol Activated!', :green
 
+      # Auto-cleanup if enabled
+      if options[:auto_cleanup]
+        cleanup_count = SmartDefaults.auto_cleanup_if_needed
+        say "🧹 Auto-cleaned #{cleanup_count} stale resources", :blue if cleanup_count > 0
+      end
+
       # Setup notifications and interrupts
       setup_notifications_and_interrupts if options[:notifications]
+
+      # Learn from this action
+      SmartDefaults.learn_from_action('enhance', {
+        control_agent: options[:control_agent],
+        follow: options[:follow],
+        notifications: options[:notifications]
+      })
 
       if options[:control_agent] && !options[:dry_run]
         enhance_with_control_agent
@@ -48,20 +62,34 @@ module EnhanceSwarm
     end
 
     desc 'spawn TASK_DESC', 'Spawn a single agent for a specific task'
-    option :role, type: :string, default: 'general', desc: 'Agent role (ux/backend/frontend/qa)'
+    option :role, type: :string, desc: 'Agent role (ux/backend/frontend/qa) - auto-detected if not specified'
     option :worktree, type: :boolean, default: true, desc: 'Use git worktree'
     option :follow, type: :boolean, default: false, desc: 'Stream live output from the agent'
     def spawn(task_desc)
+      # Use smart role detection if no role specified
+      role = options[:role] || SmartDefaults.suggest_role_for_task(task_desc)
+      
+      if role != options[:role]
+        say "🤖 Auto-detected role: #{role} (use --role to override)", :blue
+      end
+
+      # Learn from this action
+      SmartDefaults.learn_from_action('spawn', {
+        role: role,
+        worktree: options[:worktree],
+        follow: options[:follow]
+      })
+
       if options[:follow]
-        say "🤖 Spawning agent with live output for: #{task_desc}", :yellow
-        spawn_with_streaming(task_desc)
+        say "🤖 Spawning #{role} agent with live output for: #{task_desc}", :yellow
+        spawn_with_streaming(task_desc, role)
       else
-        say "🤖 Spawning agent for: #{task_desc}", :yellow
+        say "🤖 Spawning #{role} agent for: #{task_desc}", :yellow
         
         orchestrator = Orchestrator.new
         orchestrator.spawn_single(
           task: task_desc,
-          role: options[:role],
+          role: role,
           worktree: options[:worktree]
         )
       end
@@ -313,24 +341,25 @@ module EnhanceSwarm
 
     private
 
-    def spawn_with_streaming(task_desc)
+    def spawn_with_streaming(task_desc, role = nil)
       orchestrator = Orchestrator.new
+      agent_role = role || options[:role] || 'general'
       
       # Spawn the agent
       pid = orchestrator.spawn_single(
         task: task_desc,
-        role: options[:role],
+        role: agent_role,
         worktree: options[:worktree]
       )
       
       return unless pid
       
       # Start streaming output
-      agent_id = "#{options[:role]}-#{Time.now.to_i}"
+      agent_id = "#{agent_role}-#{Time.now.to_i}"
       agents = [{
         id: agent_id,
         pid: pid,
-        role: options[:role]
+        role: agent_role
       }]
       
       say "\n🔴 Live output streaming started. Press Ctrl+C to stop watching.\n", :green
@@ -587,6 +616,80 @@ module EnhanceSwarm
         dashboard.start_dashboard(agents)
       rescue Interrupt
         say "\n🖥️  Dashboard stopped by user", :yellow
+      end
+    end
+
+    desc 'suggest', 'Get smart suggestions for next actions'
+    option :context, type: :string, desc: 'Additional context for suggestions'
+    option :auto_run, type: :boolean, desc: 'Automatically run high-priority suggestions'
+    def suggest
+      say "🧠 Analyzing project and generating smart suggestions...", :blue
+      
+      # Get current context
+      context = build_suggestion_context
+      context[:user_input] = options[:context] if options[:context]
+      
+      # Get suggestions
+      suggestions = SmartDefaults.suggest_next_actions(context)
+      
+      if suggestions.empty?
+        say "✅ No suggestions - everything looks good!", :green
+        return
+      end
+      
+      say "\n💡 Smart Suggestions:", :blue
+      suggestions.each_with_index do |suggestion, index|
+        priority_color = case suggestion[:priority]
+                        when :critical then :red
+                        when :high then :yellow
+                        when :medium then :blue
+                        else :white
+                        end
+        
+        priority_text = suggestion[:priority].to_s.upcase
+        
+        say "#{index + 1}. [#{priority_text}] #{suggestion[:reason]}", priority_color
+        say "   Command: #{suggestion[:command]}", :light_black
+        
+        # Auto-run high priority suggestions if enabled
+        if options[:auto_run] && suggestion[:priority] == :high
+          if yes?("   Execute this command? [y/N]", :yellow)
+            say "   🔄 Executing: #{suggestion[:command]}", :green
+            system(suggestion[:command])
+          end
+        end
+        
+        puts
+      end
+      
+      unless options[:auto_run]
+        say "Use --auto-run to automatically execute high-priority suggestions", :light_black
+      end
+    end
+
+    desc 'smart-config', 'Generate smart configuration based on project analysis'
+    option :apply, type: :boolean, desc: 'Apply the configuration to .enhance_swarm.yml'
+    def smart_config
+      say "🔍 Analyzing project structure and generating configuration...", :blue
+      
+      config = SmartDefaults.suggest_configuration
+      
+      say "\n📋 Suggested Configuration:", :green
+      puts YAML.dump(config).colorize(:white)
+      
+      if options[:apply]
+        config_file = '.enhance_swarm.yml'
+        
+        if File.exist?(config_file)
+          backup_file = "#{config_file}.backup.#{Time.now.to_i}"
+          FileUtils.cp(config_file, backup_file)
+          say "📁 Backed up existing config to #{backup_file}", :yellow
+        end
+        
+        File.write(config_file, YAML.dump(config))
+        say "✅ Configuration applied to #{config_file}", :green
+      else
+        say "Use --apply to save this configuration to .enhance_swarm.yml", :light_black
       end
     end
 
@@ -871,6 +974,56 @@ module EnhanceSwarm
       end
       
       agents
+    end
+
+    def build_suggestion_context
+      context = {}
+      
+      # Get current git status
+      if Dir.exist?('.git')
+        begin
+          git_status = `git status --porcelain`.strip
+          context[:git_status] = {
+            modified_files: git_status.lines.count { |line| line.start_with?(' M', 'M ') },
+            untracked_files: git_status.lines.count { |line| line.start_with?('??') },
+            staged_files: git_status.lines.count { |line| line.start_with?('A ', 'M ') }
+          }
+          context[:changed_files] = git_status.lines.map { |line| line[3..-1]&.strip }.compact
+        rescue StandardError
+          context[:git_status] = {}
+          context[:changed_files] = []
+        end
+      end
+      
+      # Get current directory structure
+      context[:project_files] = {
+        package_json: File.exist?('package.json'),
+        gemfile: File.exist?('Gemfile'),
+        dockerfile: File.exist?('Dockerfile'),
+        readme: File.exist?('README.md')
+      }
+      
+      # Get current time context
+      context[:time_context] = {
+        hour: Time.now.hour,
+        day_of_week: Time.now.strftime('%A').downcase,
+        timestamp: Time.now.iso8601
+      }
+      
+      # Get enhance_swarm status
+      begin
+        monitor = Monitor.new
+        swarm_status = monitor.status
+        context[:swarm_status] = {
+          active_agents: swarm_status[:active_agents],
+          recent_branches: swarm_status[:recent_branches]&.count || 0,
+          worktrees: swarm_status[:worktrees]&.count || 0
+        }
+      rescue StandardError
+        context[:swarm_status] = { active_agents: 0, recent_branches: 0, worktrees: 0 }
+      end
+      
+      context
     end
   end
 end
