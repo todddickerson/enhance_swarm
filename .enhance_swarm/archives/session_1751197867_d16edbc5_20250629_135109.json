@@ -1,0 +1,24 @@
+{
+  "session_id": "1751197867_d16edbc5",
+  "start_time": "2025-06-29T13:51:07+02:00",
+  "task_description": "Validation test",
+  "agents": [
+    {
+      "role": null,
+      "pid": 89703,
+      "worktree_path": null,
+      "task": null,
+      "start_time": "2025-06-29T13:51:07+02:00",
+      "status": "running"
+    },
+    {
+      "role": "general",
+      "pid": 89704,
+      "worktree_path": null,
+      "task": "Quick validation test - just echo 'validation successful'",
+      "start_time": "2025-06-29T13:51:07+02:00",
+      "status": "running"
+    }
+  ],
+  "status": "active"
+}

@@ -1,0 +1,32 @@
+{
+  "session_id": "1751187637_7fda97dd",
+  "start_time": "2025-06-29T11:00:37+02:00",
+  "task_description": "Blog development workflow",
+  "agents": [
+    {
+      "role": "backend",
+      "pid": 10001,
+      "worktree_path": "/tmp/worktree_backend",
+      "task": "Create Post model and controller",
+      "start_time": "2025-06-29T11:00:37+02:00",
+      "status": "running"
+    },
+    {
+      "role": "frontend",
+      "pid": 10002,
+      "worktree_path": "/tmp/worktree_frontend",
+      "task": "Create Post views and styling",
+      "start_time": "2025-06-29T11:00:37+02:00",
+      "status": "running"
+    },
+    {
+      "role": "qa",
+      "pid": 10003,
+      "worktree_path": "/tmp/worktree_qa",
+      "task": "Write comprehensive tests",
+      "start_time": "2025-06-29T11:00:37+02:00",
+      "status": "running"
+    }
+  ],
+  "status": "active"
+}

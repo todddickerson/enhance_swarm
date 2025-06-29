@@ -1,34 +1,35 @@
 {
   "actions": {
     "spawn": {
-      "count": 1,
-      "last_used": "2025-06-29T09:24:55+02:00",
+      "count": 4,
+      "last_used": "2025-06-29T13:51:47+02:00",
       "success_rate": 1.0,
       "preferences": {
         "role": {
-          "frontend": 1
+          "frontend": 3,
+          "general": 1
         },
         "worktree": {
-          "true": 1
+          "true": 4
         },
         "follow": {
-          "false": 1
+          "false": 4
         }
       }
     },
     "enhance": {
-      "count": 2,
-      "last_used": "2025-06-29T09:25:19+02:00",
+      "count": 3,
+      "last_used": "2025-06-29T17:13:21+02:00",
       "success_rate": 1.0,
       "preferences": {
         "control_agent": {
-          "true": 2
+          "true": 3
         },
         "follow": {
-          "false": 2
+          "false": 3
         },
         "notifications": {
-          "true": 2
+          "true": 3
         }
       }
     }

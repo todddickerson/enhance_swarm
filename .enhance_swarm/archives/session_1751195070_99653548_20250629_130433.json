@@ -1,0 +1,16 @@
+{
+  "session_id": "1751195070_99653548",
+  "start_time": "2025-06-29T13:04:30+02:00",
+  "task_description": "Debug test",
+  "agents": [
+    {
+      "role": "backend",
+      "pid": 74808,
+      "worktree_path": "/Users/todddickerson/src/Github/enhance_swarm/.enhance_swarm/worktrees/backend-20250629-130430",
+      "task": "Create a simple debug test file",
+      "start_time": "2025-06-29T13:04:30+02:00",
+      "status": "running"
+    }
+  ],
+  "status": "active"
+}

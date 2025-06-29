@@ -1,0 +1,16 @@
+{
+  "session_id": "1751208541_f9531ce5",
+  "start_time": "2025-06-29T16:49:01+02:00",
+  "task_description": "Test session",
+  "agents": [
+    {
+      "role": "backend",
+      "pid": 12345,
+      "worktree_path": "/tmp/test",
+      "task": "Test task",
+      "start_time": "2025-06-29T16:49:01+02:00",
+      "status": "running"
+    }
+  ],
+  "status": "active"
+}

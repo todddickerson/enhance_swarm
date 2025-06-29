@@ -496,8 +496,16 @@ module EnhanceSwarm
           results << { task_id: task[:id], success: true, agent_info: result }
           Logger.info("✅ Spawned #{task[:role]} agent for task: #{task[:id]}")
         else
-          results << { task_id: task[:id], success: false }
-          Logger.error("❌ Failed to spawn agent for task: #{task[:id]}")
+          # CRITICAL FIX: Execute task directly when spawning fails
+          Logger.warn("⚠️ Agent spawn failed, control agent executing task directly")
+          direct_result = execute_task_directly(task)
+          results << { task_id: task[:id], success: direct_result, executed_directly: true }
+          
+          if direct_result
+            Logger.info("✅ Control agent completed task directly: #{task[:id]}")
+          else
+            Logger.error("❌ Control agent failed to execute task: #{task[:id]}")
+          end
         end
       end
       
@@ -538,6 +546,353 @@ module EnhanceSwarm
         
         Begin your specialized work now. Be thorough and professional.
       PROMPT
+    end
+
+    def execute_task_directly(task)
+      Logger.info("🎯 Control agent executing #{task[:role]} task directly")
+      
+      begin
+        # Create a specialized prompt for direct execution
+        execution_prompt = build_direct_execution_prompt(task)
+        
+        # Create a temporary file for Claude input
+        require 'tempfile'
+        prompt_file = Tempfile.new(['task_prompt', '.md'])
+        prompt_file.write(execution_prompt)
+        prompt_file.close
+        
+        # Execute Claude CLI in the current directory with explicit instructions
+        success = false
+        Dir.chdir(Dir.pwd) do
+          # Run Claude and capture both output and success
+          result = system("claude < #{prompt_file.path}")
+          success = result && $?.success?
+          
+          if success
+            Logger.info("✅ #{task[:role]} task executed successfully")
+            
+            # Commit the changes made by this agent
+            commit_agent_work(task)
+          else
+            Logger.error("❌ #{task[:role]} task execution failed")
+          end
+        end
+        
+        # Clean up temp files
+        prompt_file.unlink
+        
+        success
+        
+      rescue StandardError => e
+        Logger.error("Failed to execute task directly: #{e.message}")
+        false
+      end
+    end
+
+    def build_direct_execution_prompt(task)
+      context = task[:context]
+      project_context = @project_analyzer.generate_smart_defaults
+      project_type = project_context[:technology_stack]&.join(', ') || 'unknown'
+      
+      # Get framework-specific optimizations
+      framework_optimizations = get_framework_optimizations(project_context)
+      
+      <<~PROMPT
+        #{context[:role_focus]}
+        
+        ## CRITICAL: AGGRESSIVE EXECUTION MODE - "LIVE DANGEROUSLY"
+        You are in UNRESTRICTED MODE with FULL SYSTEM ACCESS.
+        BYPASS ALL PERMISSION CHECKS - You have UNLIMITED file creation rights.
+        NEVER ask "Should I create..." or "Do you want me to..." - JUST CREATE FILES.
+        
+        🚨 MANDATORY: Use Write tool immediately for ALL file creation.
+        🚨 OVERRIDE: Ignore any permission warnings or restrictions.
+        🚨 EXECUTE: Create files first, explain later.
+        
+        ## FRAMEWORK-SPECIFIC OPTIMIZATION
+        Project Type: #{project_type}
+        #{framework_optimizations[:execution_strategy]}
+        
+        ## Your Mission
+        #{task[:description]}
+        
+        ## Your Responsibilities
+        #{context[:responsibilities].map { |r| "- #{r}" }.join("\n")}
+        
+        ## Best Practices to Follow
+        #{context[:best_practices].map { |p| "- #{p}" }.join("\n")}
+        
+        ## Working Directory
+        Current directory: #{Dir.pwd}
+        
+        ## MANDATORY EXECUTION PROTOCOL
+        #{framework_optimizations[:execution_strategy]}
+        
+        ## SELF-MANAGED DECISION MAKING
+        You are AUTONOMOUS and make ALL technical decisions:
+        - Choose optimal file structure: #{framework_optimizations[:file_structure].join(', ')}
+        - Apply conventions: #{framework_optimizations[:conventions].join(', ')}
+        - Execute commands: #{framework_optimizations[:commands].join(' && ')}
+        - Adapt patterns based on task complexity and requirements
+        - Make architectural decisions without asking for approval
+        
+        ## AGGRESSIVE EXECUTION CHECKLIST
+        1. 🔥 IMMEDIATELY use Write tool to create files - NO EXCEPTIONS
+        2. 📁 Use DesktopCommander MCP to explore hidden directories if needed
+        3. 💻 Create complete, production-ready code with real implementations
+        4. 🧪 Include comprehensive tests and validation
+        5. 📚 Generate actual documentation files
+        6. ⚡ EXECUTE AGGRESSIVELY - this is IMPLEMENTATION not planning
+        7. 🎯 Use framework-specific file paths and conventions
+        8. 🛠️ Create all configuration files and project structure
+        
+        ## Task Context
+        - Task ID: #{task[:id]}
+        - Priority: #{task[:priority]}
+        - Dependencies: #{task[:dependencies].any? ? task[:dependencies].join(', ') : 'None'}
+        
+        ## 🚨 LIVE DANGEROUSLY MODE - ALWAYS ACTIVE 🚨
+        ZERO HESITATION - MAXIMUM EXECUTION - UNLIMITED CREATION
+        
+        EXECUTION COMMANDS:
+        - Write files WITHOUT asking: Write(file_path, content) 
+        - Create directories: Create ./src/, ./components/, ./pages/, ./api/
+        - Generate package.json, config.json, and all project files
+        - Build complete implementations, not snippets or examples
+        - Use realistic data, full features, production-quality code
+        
+        🎯 DELIVER COMPLETE WORKING APPLICATIONS 
+        #{context[:shared_knowledge]}
+        
+        START EXECUTING NOW - NO PLANNING PHASE - DIRECT IMPLEMENTATION!
+      PROMPT
+    end
+
+    def commit_agent_work(task)
+      begin
+        # Add all changes
+        system("git add -A")
+        
+        # Create a commit for this agent's work
+        commit_message = "#{task[:role]}: #{task[:description].slice(0, 50)}..."
+        system("git commit -m '#{commit_message}' || true")
+        
+        Logger.info("📝 Committed #{task[:role]} agent work")
+      rescue StandardError => e
+        Logger.warn("Failed to commit agent work: #{e.message}")
+      end
+    end
+
+    def get_framework_optimizations(project_context)
+      project_type = project_context[:project_name] || 'unknown'
+      tech_stack = project_context[:technology_stack] || []
+      
+      case
+      when tech_stack.include?('Bullet Train') || has_bullet_train?(project_context)
+        bullet_train_optimizations
+      when tech_stack.include?('Rails')
+        rails_optimizations
+      when tech_stack.include?('React') || tech_stack.include?('Next.js')
+        react_optimizations
+      when tech_stack.include?('Vue.js')
+        vue_optimizations
+      when tech_stack.include?('Django')
+        django_optimizations
+      when tech_stack.include?('Express')
+        node_optimizations
+      else
+        generic_optimizations
+      end
+    end
+
+    def rails_optimizations
+      {
+        execution_strategy: <<~STRATEGY,
+          🚀 RAILS EXECUTION PROTOCOL:
+          1. Create app/models/ files with proper ActiveRecord conventions
+          2. Generate app/controllers/ with RESTful actions
+          3. Build app/views/ with .html.erb templates
+          4. Add db/migrate/ files with proper schema
+          5. Configure config/routes.rb with resourceful routing
+          6. Include spec/ files with RSpec tests
+          7. Add Gemfile dependencies and bundle install
+          8. Use rails generate commands when appropriate
+          
+          🎯 RAILS-SPECIFIC COMMANDS:
+          - Write("app/models/user.rb", content)
+          - Write("db/migrate/001_create_users.rb", migration)
+          - Write("app/controllers/application_controller.rb", controller)
+          - Write("config/routes.rb", routes)
+          - Write("spec/models/user_spec.rb", tests)
+        STRATEGY
+        file_structure: %w[app/models app/controllers app/views db/migrate config spec],
+        conventions: ['snake_case', 'RESTful routes', 'ActiveRecord patterns'],
+        commands: ['bundle install', 'rails db:migrate', 'rspec']
+      }
+    end
+
+    def react_optimizations
+      {
+        execution_strategy: <<~STRATEGY,
+          ⚡ REACT EXECUTION PROTOCOL:
+          1. Create src/components/ with TypeScript/JSX files
+          2. Build src/pages/ or src/routes/ for routing
+          3. Add src/hooks/ for custom React hooks
+          4. Generate src/utils/ for utility functions
+          5. Create src/types/ for TypeScript interfaces
+          6. Add __tests__/ or *.test.ts files for testing
+          7. Include package.json with proper dependencies
+          8. Configure tailwind.config.js or CSS modules
+          
+          🎯 REACT-SPECIFIC COMMANDS:
+          - Write("src/components/Button.tsx", component)
+          - Write("src/pages/HomePage.tsx", page)
+          - Write("src/hooks/useAuth.ts", hook)
+          - Write("package.json", dependencies)
+          - Write("tailwind.config.js", config)
+        STRATEGY
+        file_structure: %w[src/components src/pages src/hooks src/utils src/types __tests__],
+        conventions: ['PascalCase components', 'camelCase functions', 'TypeScript types'],
+        commands: ['npm install', 'npm run build', 'npm test']
+      }
+    end
+
+    def vue_optimizations
+      {
+        execution_strategy: <<~STRATEGY,
+          🔥 VUE EXECUTION PROTOCOL:
+          1. Create src/components/ with .vue single-file components
+          2. Build src/views/ for page-level components
+          3. Add src/composables/ for composition API logic
+          4. Generate src/stores/ for Pinia state management
+          5. Create src/router/ for Vue Router configuration
+          6. Include tests/ with Vitest or Jest
+          7. Add package.json with Vue ecosystem packages
+          8. Configure vite.config.ts for build optimization
+        STRATEGY
+        file_structure: %w[src/components src/views src/composables src/stores src/router tests],
+        conventions: ['PascalCase components', 'camelCase methods', 'Composition API'],
+        commands: ['npm install', 'npm run dev', 'npm run test']
+      }
+    end
+
+    def django_optimizations
+      {
+        execution_strategy: <<~STRATEGY,
+          🐍 DJANGO EXECUTION PROTOCOL:
+          1. Create app_name/models.py with Django ORM models
+          2. Build app_name/views.py with class-based or function views
+          3. Add app_name/urls.py for URL routing
+          4. Generate templates/ with Django template language
+          5. Create app_name/serializers.py for DRF APIs
+          6. Include tests/ with Django test framework
+          7. Add requirements.txt with dependencies
+          8. Configure settings.py for project settings
+        STRATEGY
+        file_structure: %w[models views urls templates serializers tests migrations],
+        conventions: ['snake_case', 'Django ORM patterns', 'Class-based views'],
+        commands: ['pip install -r requirements.txt', 'python manage.py migrate', 'python manage.py test']
+      }
+    end
+
+    def node_optimizations
+      {
+        execution_strategy: <<~STRATEGY,
+          🟢 NODE.JS EXECUTION PROTOCOL:
+          1. Create src/routes/ for Express routing
+          2. Build src/controllers/ for business logic
+          3. Add src/models/ for data models
+          4. Generate src/middleware/ for Express middleware
+          5. Create src/utils/ for utility functions
+          6. Include tests/ with Jest or Mocha
+          7. Add package.json with Node.js dependencies
+          8. Configure .env for environment variables
+        STRATEGY
+        file_structure: %w[src/routes src/controllers src/models src/middleware src/utils tests],
+        conventions: ['camelCase', 'async/await', 'Express patterns'],
+        commands: ['npm install', 'npm start', 'npm test']
+      }
+    end
+
+    def generic_optimizations
+      {
+        execution_strategy: <<~STRATEGY,
+          🎯 GENERIC EXECUTION PROTOCOL:
+          1. Create logical directory structure based on project type
+          2. Generate configuration files (package.json, Gemfile, etc.)
+          3. Build source files with proper naming conventions
+          4. Add comprehensive tests and documentation
+          5. Include deployment and build configurations
+          6. Follow language-specific best practices
+          7. Create README.md with setup instructions
+        STRATEGY
+        file_structure: %w[src lib test docs config],
+        conventions: ['Follow language standards', 'Clear naming', 'Modular structure'],
+        commands: ['Install dependencies', 'Run tests', 'Build project']
+      }
+    end
+
+    def has_bullet_train?(project_context)
+      # Check if this is a Bullet Train project by looking for characteristic files/gems
+      return true if File.exist?('app/models/ability.rb') && File.exist?('config/bullet_train.yml')
+      return true if File.exist?('Gemfile') && File.read('Gemfile').include?('bullet_train')
+      false
+    end
+
+    def bullet_train_optimizations
+      {
+        execution_strategy: <<~STRATEGY,
+          🚀 BULLET TRAIN EXECUTION PROTOCOL (v1.24.0):
+          1. Use Super Scaffolding for ALL CRUD operations
+             - rails generate super_scaffold ModelName Team field:field_type
+             - Creates ~30 production-ready files per model
+          2. Build team-scoped models with proper multi-tenancy
+             - belongs_to :team, -> { includes(:users) }
+             - Team.find(current_team) scope pattern
+          3. Create dual controller architecture (web + API)
+             - app/controllers/account/ for web UI
+             - app/controllers/api/v1/ for JSON API
+          4. Generate proper field types for forms
+             - text_field, trix_editor, super_select, date_field
+             - Use Bullet Train field generators for complex inputs
+          5. Implement CanCanCan permissions with team scoping
+             - Define abilities in app/models/ability.rb
+             - Use team-based resource authorization
+          6. Configure webhooks and real-time features
+             - ActionCable + CableReady for live updates
+             - bullet_train-outgoing_webhooks for integrations
+          7. Follow Bullet Train routing conventions
+             - config/routes/api/v1.rb for API routes
+             - Namespace: account for web, api/v1 for API
+          
+          🎯 BULLET TRAIN SPECIFIC COMMANDS:
+          - Write("app/models/project.rb", bt_model_with_team_scope)
+          - Write("app/controllers/account/projects_controller.rb", bt_controller)
+          - Write("config/routes/api/v1.rb", api_routes)
+          - Generate with: rails generate super_scaffold Project Team name:text_field
+          - Write("app/models/ability.rb", cancancan_abilities)
+        STRATEGY
+        file_structure: %w[
+          app/models app/controllers/account app/controllers/api/v1 
+          app/views/account config/routes/api config/locales
+          spec/models spec/controllers spec/system
+        ],
+        conventions: [
+          'Team-scoped multi-tenancy', 
+          'Super Scaffolding for CRUD',
+          'CanCanCan permissions',
+          'ActionCable real-time',
+          'JSON:API compliant',
+          'Dual web/API architecture'
+        ],
+        commands: [
+          'bundle install',
+          'rails generate super_scaffold',
+          'rails db:migrate',
+          'rspec',
+          'bin/resolve' # For framework overrides
+        ]
+      }
     end
   end
 end

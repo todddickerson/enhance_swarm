@@ -1,0 +1,16 @@
+{
+  "session_id": "1751192354_79568f0f",
+  "start_time": "2025-06-29T12:19:14+02:00",
+  "task_description": "Claude CLI integration test",
+  "agents": [
+    {
+      "role": "general",
+      "pid": 62977,
+      "worktree_path": null,
+      "task": "Simple test task for integration",
+      "start_time": "2025-06-29T12:19:14+02:00",
+      "status": "running"
+    }
+  ],
+  "status": "active"
+}
