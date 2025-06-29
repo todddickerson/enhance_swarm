@@ -3,12 +3,16 @@
 require 'thor'
 require 'colorize'
 require_relative 'web_ui'
+require_relative 'session_manager'
 
 module EnhanceSwarm
   class CLI < Thor
     def self.exit_on_failure?
       true
     end
+
+    # Add version flag support
+    map %w[--version -v] => :version
 
     desc 'init', 'Initialize EnhanceSwarm in your project'
     def init
@@ -88,11 +92,25 @@ module EnhanceSwarm
         say "🤖 Spawning #{role} agent for: #{task_desc}", :yellow
         
         orchestrator = Orchestrator.new
-        orchestrator.spawn_single(
+        
+        # Ensure session exists before spawning
+        session_manager = SessionManager.new
+        unless session_manager.session_exists?
+          session_manager.create_session(task_desc)
+          say "📁 Created session for agent spawn", :blue
+        end
+        
+        result = orchestrator.spawn_single(
           task: task_desc,
           role: role,
           worktree: options[:worktree]
         )
+        
+        if result
+          say "✅ Agent spawned successfully with PID: #{result}", :green
+        else
+          say "❌ Failed to spawn agent", :red
+        end
       end
     end
 

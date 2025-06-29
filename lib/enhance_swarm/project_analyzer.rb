@@ -604,8 +604,8 @@ module EnhanceSwarm
       content = safe_read_file(path)
       return nil unless content
       
-      YAML.safe_load(content)
-    rescue Psych::SyntaxError
+      YAML.safe_load(content, aliases: true)
+    rescue Psych::SyntaxError, Psych::AliasesNotEnabled
       nil
     end
   end

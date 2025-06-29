@@ -431,21 +431,29 @@ module EnhanceSwarm
     end
 
     def input_available?
+      # Check if we're in an interactive terminal first
+      return false unless $stdin.tty?
+      
       # Non-blocking input check
       ready = IO.select([$stdin], nil, nil, 0)
       ready && ready[0].include?($stdin)
+    rescue StandardError
+      false
     end
 
     def get_terminal_size
       begin
-        stty_output = `stty size`.strip
+        # Check if we're in an interactive terminal
+        return { width: 80, height: 24 } unless $stdin.tty?
+        
+        stty_output = `stty size 2>/dev/null`.strip
         return { width: 80, height: 24 } if stty_output.empty?
         
         rows, cols = stty_output.split.map(&:to_i)
         return { width: 80, height: 24 } if rows == 0 || cols == 0
         
         { width: cols, height: rows }
-      rescue
+      rescue StandardError
         { width: 80, height: 24 }
       end
     end

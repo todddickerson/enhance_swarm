@@ -124,6 +124,9 @@ module EnhanceSwarm
         worktrees_dir = File.dirname(worktree_path)
         FileUtils.mkdir_p(worktrees_dir) unless Dir.exist?(worktrees_dir)
         
+        # Check if we have any commits (required for git worktree)
+        ensure_initial_commit
+        
         # Create git worktree
         CommandExecutor.execute('git', 'worktree', 'add', worktree_path)
         
@@ -132,7 +135,41 @@ module EnhanceSwarm
         
       rescue CommandExecutor::CommandError => e
         Logger.error("Failed to create worktree for #{role}: #{e.message}")
+        
+        # If the error is about no commits, try to create one
+        if e.message.include?('does not have any commits yet')
+          Logger.info("No initial commit found, creating one...")
+          if create_initial_commit
+            retry
+          end
+        end
+        
         nil
+      end
+    end
+
+    def ensure_initial_commit
+      # Check if we have any commits
+      result = CommandExecutor.execute('git', 'log', '--oneline', '-1')
+      true
+    rescue CommandExecutor::CommandError
+      # No commits exist, create initial commit
+      create_initial_commit
+    end
+
+    def create_initial_commit
+      begin
+        # Add all files to git
+        CommandExecutor.execute('git', 'add', '.')
+        
+        # Create initial commit
+        CommandExecutor.execute('git', 'commit', '-m', 'Initial commit - EnhanceSwarm setup')
+        
+        Logger.info("Created initial git commit for EnhanceSwarm")
+        true
+      rescue CommandExecutor::CommandError => e
+        Logger.error("Failed to create initial commit: #{e.message}")
+        false
       end
     end
 
@@ -176,6 +213,15 @@ module EnhanceSwarm
         
       rescue StandardError => e
         Logger.error("Failed to spawn Claude process for #{role}: #{e.message}")
+        
+        # Enhanced debugging information
+        if ENV['ENHANCE_SWARM_DEBUG'] == 'true'
+          Logger.error("Debug info - Error class: #{e.class}")
+          Logger.error("Debug info - Backtrace: #{e.backtrace.first(3).join(', ')}")
+          Logger.error("Debug info - Working directory: #{agent_dir}")
+          Logger.error("Debug info - Claude CLI available: #{claude_cli_available?}")
+        end
+        
         # Fall back to simulation mode
         spawn_simulated_process(role, worktree_path)
       end
@@ -206,9 +252,13 @@ module EnhanceSwarm
         4. Create high-quality, production-ready code
         5. Include comprehensive tests where appropriate
         6. Document your changes and decisions
+        7. If you encounter permission issues, provide detailed implementation plans instead
+        8. Always output what you would implement, even if file operations fail
         
         ## Available Tools:
         You have access to all Claude Code tools for file editing, terminal commands, and project analysis.
+        Note: If file write operations fail due to permissions, focus on providing comprehensive 
+        implementation details and code that could be manually applied.
         
         Begin working on your assigned task now.
       PROMPT
@@ -246,8 +296,17 @@ module EnhanceSwarm
           # Change to working directory
           cd "#{working_dir}"
           
-          # Create a temporary prompt file
-          PROMPT_FILE=$(mktemp /tmp/claude_prompt_XXXXXX.md)
+          # Create a unique temporary prompt file using PID and timestamp
+          TIMESTAMP=$(date +%s)
+          PROMPT_FILE="/tmp/claude_prompt_#{role}_$${TIMESTAMP}_$$.md"
+          
+          # Ensure unique filename by adding counter if needed
+          COUNTER=0
+          while [[ -e "$PROMPT_FILE" ]]; do
+            COUNTER=$((COUNTER + 1))
+            PROMPT_FILE="/tmp/claude_prompt_#{role}_$${TIMESTAMP}_$$_${COUNTER}.md"
+          done
+          
           cat > "$PROMPT_FILE" << 'EOF'
           #{prompt}
           EOF

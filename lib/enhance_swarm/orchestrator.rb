@@ -139,10 +139,26 @@ module EnhanceSwarm
         
         if result
           puts '✅ Agent spawned successfully'.colorize(:green)
+          puts "   📊 PID: #{result[:pid]}, Role: #{result[:role]}".colorize(:blue)
+          if result[:worktree_path]
+            puts "   📊 Worktree: #{File.basename(result[:worktree_path])}".colorize(:blue)
+          end
+          
           Logger.log_operation(operation_id, 'success', { role: role, pid: result[:pid] })
+          
+          # Wait a moment and check if the process is still running
+          sleep(1)
+          begin
+            Process.getpgid(result[:pid])
+            puts "   📊 Agent process confirmed running".colorize(:green)
+          rescue Errno::ESRCH
+            puts "   📊 Agent process completed quickly".colorize(:yellow)
+          end
+          
           result[:pid]
         else
           puts "❌ Failed to spawn agent".colorize(:red)
+          puts "   💡 Try running with ENHANCE_SWARM_DEBUG=true for details".colorize(:yellow)
           Logger.log_operation(operation_id, 'failed', { role: role, error: 'Spawn failed' })
           false
         end
