@@ -76,6 +76,34 @@ module EnhanceSwarm
       }
     end
 
+    # Enhanced progress tracking integration
+    def track_progress_with_streamer(streamer = nil)
+      return unless streamer
+      
+      Thread.new do
+        while @status == 'coordinating'
+          status = current_status
+          
+          # Update progress tracker
+          progress = status['progress_percentage'] || 0
+          message = status['message'] || 'Coordinating agents...'
+          
+          streamer.set_progress(progress,
+                              message: message,
+                              operation: 'control_coordination',
+                              details: {
+                                phase: status['phase'],
+                                active_agents: status['active_agents']&.length || 0,
+                                completed_agents: status['completed_agents']&.length || 0
+                              })
+          
+          break if %w[completed failed].include?(status['status'])
+          
+          sleep(2)
+        end
+      end
+    end
+
     private
 
     def spawn_control_agent
@@ -276,32 +304,5 @@ module EnhanceSwarm
       end
     end
 
-    # Enhanced progress tracking integration
-    def track_progress_with_streamer(streamer = nil)
-      return unless streamer
-      
-      Thread.new do
-        while @status == 'coordinating'
-          status = current_status
-          
-          # Update progress tracker
-          progress = status['progress_percentage'] || 0
-          message = status['message'] || 'Coordinating agents...'
-          
-          streamer.set_progress(progress,
-                              message: message,
-                              operation: 'control_coordination',
-                              details: {
-                                phase: status['phase'],
-                                active_agents: status['active_agents']&.length || 0,
-                                completed_agents: status['completed_agents']&.length || 0
-                              })
-          
-          break if %w[completed failed].include?(status['status'])
-          
-          sleep(2)
-        end
-      end
-    end
   end
 end

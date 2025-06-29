@@ -277,7 +277,8 @@ module EnhanceSwarm
 
     def format_duration(agent)
       if agent[:start_time]
-        duration = Time.now - Time.parse(agent[:start_time])
+        start_time = agent[:start_time].is_a?(String) ? Time.parse(agent[:start_time]) : agent[:start_time]
+        duration = Time.now - start_time
         format_time_duration(duration)
       else
         ""
