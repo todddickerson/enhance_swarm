@@ -37,6 +37,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'parallel', '~> 1.24'
   spec.add_dependency 'psych', '~> 5.1'
   spec.add_dependency 'thor', '~> 1.3'
+  spec.add_dependency 'webrick', '~> 1.8'
   
   # Task management - note: install separately with: gem install swarm_tasks
   # spec.add_dependency 'swarm_tasks' # Uncomment when gem is published

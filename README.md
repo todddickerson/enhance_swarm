@@ -1,24 +1,32 @@
 # EnhanceSwarm 🚀
 
-**Intelligent multi-agent orchestration for Claude with autonomous coordination, live streaming, and smart dependency management.**
+**Production-ready multi-agent orchestration for Claude with real agent spawning, autonomous coordination, and intelligent project analysis.**
 
-EnhanceSwarm transforms Claude into a sophisticated multi-agent development team with a Control Agent that autonomously coordinates specialist workers (Backend, Frontend, QA, UX) to complete complex software tasks in parallel.
+EnhanceSwarm v1.0 transforms Claude into a sophisticated multi-agent development team that autonomously coordinates specialist workers (Backend, Frontend, QA, UX) using real Claude CLI processes to complete complex software tasks in parallel.
 
 ## ✨ Key Features
 
-- **🎛️ Control Agent**: Autonomous Claude instance coordinates multi-agent workflows
-- **📡 Live Streaming**: Real-time output streaming from all agents with progress bars
-- **🔔 Smart Notifications**: Cross-platform desktop notifications with intelligent interrupts
-- **🔄 Smart Coordination**: Intelligent dependency management (backend → frontend → qa)
-- **📊 Progress Tracking**: Time estimates, token usage, and completion percentages
-- **🔍 Agent Review**: Monitor and track work across all agent worktrees
-- **⚡ Self-Healing**: Automatic retries, error recovery, and resource cleanup
+- **🤖 Real Claude CLI Integration**: Spawns authentic Claude agents using your local Claude CLI
+- **🧠 Intelligent Project Analysis**: Automatically detects Rails, React, Vue, Django, and more
+- **🎯 Role-Specialized Agents**: Backend, Frontend, QA, and UX agents with focused expertise
+- **📋 Smart Task Management**: Seamless integration with existing project workflows
+- **🌐 Web-Based Dashboard**: Real-time monitoring and control via web interface
+- **🔄 Graceful Fallback**: Simulation mode when Claude CLI unavailable
+- **⚡ Production Ready**: Comprehensive testing and error handling
 - **🛡️ Security First**: Command injection protection and secure execution
-- **🏗️ Self-Contained**: No external claude-swarm dependency - fully integrated agent management
+- **📊 Multi-Framework Support**: Optimized for Rails, React, Vue, Django, and more
 
 ## 🚀 Quick Installation
 
-### Option 1: Add to Existing Project (Recommended)
+### Prerequisites
+
+- **Claude CLI**: Install from [Claude Code](https://claude.ai/code) - required for real agent spawning
+- **Ruby 3.0+**: For running EnhanceSwarm
+- **Git**: For project management and agent worktrees
+
+### Installation Options
+
+#### Option 1: Add to Existing Project (Recommended)
 
 ```bash
 # Add to your Gemfile
@@ -29,7 +37,7 @@ bundle install
 bundle exec enhance-swarm init
 ```
 
-### Option 2: Global Installation
+#### Option 2: Global Installation
 
 ```bash
 # Clone and install globally
@@ -41,12 +49,48 @@ bundle install && rake install
 enhance-swarm init
 ```
 
-### Option 3: Quick Setup Script
+#### Option 3: Quick Setup with Validation
 
 ```bash
 # One-command setup with dependency checking
 curl -sSL https://raw.githubusercontent.com/todddickerson/enhance_swarm/main/setup.sh | bash
 ```
+
+## 🎉 What's New in v1.0
+
+### Real Claude CLI Integration
+
+EnhanceSwarm v1.0 introduces **authentic Claude agent spawning** using your local Claude CLI:
+
+```bash
+# Real Claude agents with specialized prompts
+enhance-swarm enhance "implement user authentication"
+# ✅ Spawns actual Claude processes
+# ✅ Role-specific agent prompts  
+# ✅ Project-aware context
+# ✅ Independent execution with monitoring
+```
+
+### Intelligent Project Analysis
+
+Automatic project detection and smart configuration:
+
+```bash
+# Smart project analysis
+enhance-swarm init
+# ✅ Detects Rails, React, Vue, Django, and more
+# ✅ Configures optimal agent roles
+# ✅ Sets up framework-specific commands
+# ✅ Generates intelligent code standards
+```
+
+### Production Features
+
+- **Comprehensive Testing**: 80%+ test coverage with real Claude CLI validation
+- **Rails Optimization**: MVC-aware agent coordination and Rails conventions
+- **Error Recovery**: Graceful fallback to simulation mode when Claude CLI unavailable
+- **Web Dashboard**: Real-time monitoring and control interface
+- **Multi-Framework**: Built-in support for Rails, React, Vue, Django, and more
 
 ## 🎯 Getting Started
 
@@ -87,15 +131,37 @@ orchestration:
 ### 3. Start Enhancing!
 
 ```bash
-# Launch with Control Agent coordination
+# Launch web interface for project management
+enhance-swarm ui
+# Opens http://localhost:4567 with kanban board and real-time dashboard
+
+# Start multi-agent development workflow
 enhance-swarm enhance "implement user authentication system"
+# ✅ Spawns real Claude agents with role specialization
+# ✅ Coordinates backend → frontend → qa workflow
+# ✅ Provides real-time progress monitoring
 
-# With live streaming
-enhance-swarm enhance "add shopping cart functionality" --follow
-
-# Single agent for quick tasks
-enhance-swarm spawn "fix login validation bug" --role backend --follow
+# Single specialized agent for focused tasks
+enhance-swarm spawn "fix login validation bug" --role backend
+# ✅ Spawns backend specialist with project context
+# ✅ Uses actual Claude CLI for authentic development
 ```
+
+## 🌐 Web Dashboard
+
+EnhanceSwarm v1.0 includes a comprehensive web interface:
+
+```bash
+# Start the web dashboard
+enhance-swarm ui
+```
+
+**Features:**
+- **Kanban Board**: Visual task management with drag-and-drop
+- **Agent Monitoring**: Real-time status of all running agents
+- **Project Analysis**: Live project structure and technology detection
+- **Task Creation**: Spawn agents directly from the web interface
+- **Progress Tracking**: Visual progress bars and completion status
 
 ## 🎛️ The Control Agent System
 

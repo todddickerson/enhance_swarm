@@ -1,12 +1,13 @@
 PATH
   remote: .
   specs:
-    enhance_swarm (0.1.1)
+    enhance_swarm (1.0.0)
       colorize (~> 1.1)
       listen (~> 3.8)
       parallel (~> 1.24)
       psych (~> 5.1)
       thor (~> 1.3)
+      webrick (~> 1.8)
 
 GEM
   remote: https://rubygems.org/
@@ -85,6 +86,7 @@ GEM
     unicode-display_width (3.1.4)
       unicode-emoji (~> 4.0, >= 4.0.4)
     unicode-emoji (4.0.4)
+    webrick (1.9.1)
     yard (0.9.37)
 
 PLATFORMS

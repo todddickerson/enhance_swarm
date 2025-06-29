@@ -103,6 +103,15 @@ module EnhanceSwarm
       stopped_count
     end
 
+    def claude_cli_available?
+      @claude_cli_available ||= begin
+        result = `claude --version 2>/dev/null`
+        $?.success? && result.strip.length > 0
+      rescue StandardError
+        false
+      end
+    end
+
     private
 
     def create_agent_worktree(role)
@@ -128,27 +137,33 @@ module EnhanceSwarm
     end
 
     def spawn_claude_process(prompt, role, worktree_path)
-      # Create a temporary prompt file
-      prompt_file = Tempfile.new(['agent_prompt', '.txt'])
-      prompt_file.write(prompt)
-      prompt_file.close
-
       begin
-        # Determine the command to run Claude
-        # This could be 'claude' CLI if available, or a fallback method
-        claude_command = determine_claude_command
+        # Check if Claude CLI is available
+        unless claude_cli_available?
+          Logger.error("Claude CLI not available - falling back to simulation mode")
+          return spawn_simulated_process(role, worktree_path)
+        end
 
-        # Prepare environment
-        env = build_agent_environment(role, worktree_path)
+        # Prepare the enhanced prompt for the agent
+        enhanced_prompt = build_enhanced_agent_prompt(prompt, role, worktree_path)
         
-        # Spawn the process
+        # Create working directory for the agent
+        agent_dir = worktree_path || Dir.pwd
+        
+        # Prepare environment
+        env = build_agent_environment(role, agent_dir)
+        
+        # Create a temporary script to handle the Claude interaction
+        script_file = create_agent_script(enhanced_prompt, role, agent_dir)
+        
+        # Ensure logs directory exists
+        FileUtils.mkdir_p(File.join('.enhance_swarm', 'logs'))
+        
+        # Spawn the Claude process
         pid = Process.spawn(
           env,
-          claude_command,
-          '--role', role,
-          '--file', prompt_file.path,
-          '--autonomous',
-          chdir: worktree_path || Dir.pwd,
+          '/bin/bash', script_file,
+          chdir: agent_dir,
           out: File.join('.enhance_swarm', 'logs', "#{role}_output.log"),
           err: File.join('.enhance_swarm', 'logs', "#{role}_error.log")
         )
@@ -156,68 +171,126 @@ module EnhanceSwarm
         # Don't wait for the process - let it run independently
         Process.detach(pid)
         
-        Logger.info("Spawned Claude process for #{role} with PID: #{pid}")
+        Logger.info("Spawned Claude agent process: #{role} (PID: #{pid})")
         pid
-
+        
       rescue StandardError => e
-        Logger.error("Failed to spawn Claude process: #{e.message}")
-        # Try fallback method
-        spawn_fallback_agent(prompt, role, worktree_path)
-      ensure
-        prompt_file.unlink if prompt_file
+        Logger.error("Failed to spawn Claude process for #{role}: #{e.message}")
+        # Fall back to simulation mode
+        spawn_simulated_process(role, worktree_path)
       end
     end
 
-    def determine_claude_command
-      # Check for available Claude CLI tools
-      claude_commands = ['claude', 'claude-cli', 'npx claude']
+    def build_enhanced_agent_prompt(base_prompt, role, worktree_path)
+      config = EnhanceSwarm.configuration
       
-      claude_commands.each do |cmd|
-        begin
-          # Test if command exists
-          Open3.capture3("which #{cmd.split.first}")
-          return cmd
-        rescue StandardError
-          next
-        end
-      end
-      
-      # If no Claude CLI found, we'll use a fallback
-      raise StandardError, "No Claude CLI found - using fallback method"
+      <<~PROMPT
+        You are a specialized #{role.upcase} agent working as part of an EnhanceSwarm multi-agent team.
+        
+        ## Your Role: #{role.capitalize}
+        #{get_role_description(role)}
+        
+        ## Working Context:
+        - Project: #{config.project_name}
+        - Technology Stack: #{config.technology_stack}
+        - Working Directory: #{worktree_path || Dir.pwd}
+        - Code Standards: #{config.code_standards.join(', ')}
+        
+        ## Your Task:
+        #{base_prompt}
+        
+        ## Important Instructions:
+        1. Stay focused on your role as a #{role} specialist
+        2. Follow the project's code standards and conventions
+        3. Work autonomously but consider integration with other agents
+        4. Create high-quality, production-ready code
+        5. Include comprehensive tests where appropriate
+        6. Document your changes and decisions
+        
+        ## Available Tools:
+        You have access to all Claude Code tools for file editing, terminal commands, and project analysis.
+        
+        Begin working on your assigned task now.
+      PROMPT
     end
 
-    def spawn_fallback_agent(prompt, role, worktree_path)
-      # Fallback: Create a script that the user can run manually
-      # or integrate with existing Claude Code session
+    def get_role_description(role)
+      case role.to_s.downcase
+      when 'backend'
+        'You specialize in server-side logic, APIs, database design, models, and business logic implementation.'
+      when 'frontend'
+        'You specialize in user interfaces, client-side code, styling, user experience, and presentation layer.'
+      when 'qa'
+        'You specialize in testing, quality assurance, test automation, edge case analysis, and validation.'
+      when 'ux'
+        'You specialize in user experience design, interaction flows, accessibility, and user-centric improvements.'
+      when 'general'
+        'You are a general-purpose agent capable of handling various development tasks across the full stack.'
+      else
+        "You are a #{role} specialist agent focusing on your area of expertise."
+      end
+    end
+
+    def create_agent_script(prompt, role, working_dir)
+      # Create a temporary script file that will run Claude
+      script_file = Tempfile.new(['agent_script', '.sh'])
       
-      Logger.warn("Using fallback agent spawning for #{role}")
+      begin
+        script_content = <<~SCRIPT
+          #!/bin/bash
+          set -e
+          
+          # Agent script for #{role} agent
+          echo "Starting #{role} agent in #{working_dir}"
+          
+          # Change to working directory
+          cd "#{working_dir}"
+          
+          # Create a temporary prompt file
+          PROMPT_FILE=$(mktemp /tmp/claude_prompt_XXXXXX.md)
+          cat > "$PROMPT_FILE" << 'EOF'
+          #{prompt}
+          EOF
+          
+          # Run Claude with the prompt
+          echo "Executing Claude for #{role} agent..."
+          claude --print < "$PROMPT_FILE"
+          
+          # Cleanup
+          rm -f "$PROMPT_FILE"
+          
+          echo "#{role} agent completed successfully"
+        SCRIPT
+        
+        script_file.write(script_content)
+        script_file.flush
+        script_file.close
+        
+        # Make the script executable
+        File.chmod(0755, script_file.path)
+        
+        script_file.path
+      rescue StandardError => e
+        Logger.error("Failed to create agent script: #{e.message}")
+        script_file.close if script_file && !script_file.closed?
+        raise e
+      end
+    end
+
+    def spawn_simulated_process(role, worktree_path)
+      # Fallback simulation when Claude CLI is not available
+      Logger.warn("Using simulation mode for #{role} agent")
       
-      # Create a script file that contains the prompt and instructions
-      script_path = File.join('.enhance_swarm', 'agent_scripts', "#{role}_agent.md")
-      FileUtils.mkdir_p(File.dirname(script_path))
+      # Create a simple background process that simulates agent work
+      pid = Process.spawn(
+        '/bin/bash', '-c', 
+        "sleep 30 && echo 'Simulated #{role} agent completed' > /dev/null",
+        chdir: worktree_path || Dir.pwd
+      )
       
-      script_content = <<~SCRIPT
-        # #{role.upcase} Agent Task
-        
-        **Working Directory:** #{worktree_path || Dir.pwd}
-        **Role:** #{role}
-        **Spawned:** #{Time.now}
-        
-        ## Instructions
-        
-        #{prompt}
-        
-        ## Status
-        
-        To mark this agent as completed, create a file: `.enhance_swarm/completed/#{role}_completed.txt`
-      SCRIPT
-      
-      File.write(script_path, script_content)
-      
-      # Return a pseudo-PID (timestamp) for tracking
-      pseudo_pid = Time.now.to_i
-      Logger.info("Created fallback agent script: #{script_path} (tracking ID: #{pseudo_pid})")
-      pseudo_pid
+      Process.detach(pid)
+      Logger.info("Spawned simulated agent: #{role} (PID: #{pid})")
+      pid
     end
 
     def build_agent_environment(role, worktree_path)
