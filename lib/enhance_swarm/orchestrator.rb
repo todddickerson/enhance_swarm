@@ -6,13 +6,18 @@ require_relative 'command_executor'
 require_relative 'retry_handler'
 require_relative 'logger'
 require_relative 'cleanup_manager'
+require_relative 'session_manager'
+require_relative 'agent_spawner'
+require_relative 'process_monitor'
 
 module EnhanceSwarm
   class Orchestrator
     def initialize
       @config = EnhanceSwarm.configuration
       @task_manager = TaskManager.new
-      @monitor = Monitor.new
+      @session_manager = SessionManager.new
+      @agent_spawner = AgentSpawner.new
+      @process_monitor = ProcessMonitor.new
     end
 
     def enhance(task_id: nil, dry_run: false, follow: false)
@@ -33,11 +38,19 @@ module EnhanceSwarm
         return
       end
 
-      # Step 2: Move task to active
+      # Step 2: Create or resume session
+      unless @session_manager.session_exists?
+        @session_manager.create_session(task[:description])
+        puts '📁 Created new session'.colorize(:green)
+      else
+        puts '📁 Resuming existing session'.colorize(:blue)
+      end
+
+      # Step 3: Move task to active
       @task_manager.move_task(task[:id], 'active')
       puts '✅ Task moved to active'.colorize(:green)
 
-      # Step 3: Break down and spawn agents with progress tracking
+      # Step 4: Break down and spawn agents with progress tracking
       agents = break_down_task(task)
       total_tokens = agents.sum { |agent| ProgressTracker.estimate_tokens_for_operation('spawn_agent') }
       
@@ -55,8 +68,8 @@ module EnhanceSwarm
 
       # Step 5: Continue with other work
       puts "\n💡 Agents working in background. Check back later with:".colorize(:blue)
-      puts '   enhance-swarm monitor'
       puts '   enhance-swarm status'
+      puts '   enhance-swarm monitor'
 
       # Return control to user for other work
     end
@@ -70,8 +83,8 @@ module EnhanceSwarm
         elapsed = Time.now - start_time
         progress = 50 + (elapsed / timeout_seconds * 50).to_i # 50-100% progress
         
-        # Get current status
-        status = @monitor.status
+        # Get current status using built-in monitor
+        status = @process_monitor.status
         active_count = status[:active_agents]
         
         tracker.set_progress(progress,
@@ -91,64 +104,49 @@ module EnhanceSwarm
     def spawn_agents_with_streaming(agents)
       puts "\n🤖 Spawning #{agents.count} agents with live output...".colorize(:yellow)
       
-      spawned_agents = []
-      
-      # Spawn all agents first
-      agents.each_with_index do |agent, index|
-        sleep(2 + rand(0..2)) if index > 0 # Add jitter
-        
-        pid = spawn_single(
-          task: agent[:task],
-          role: agent[:role],
-          worktree: true
-        )
-        
-        if pid
-          agent_id = "#{agent[:role]}-#{Time.now.to_i}-#{index}"
-          spawned_agents << {
-            id: agent_id,
-            pid: pid,
-            role: agent[:role]
-          }
-        end
-      end
+      # Use built-in agent spawner
+      spawned_agents = @agent_spawner.spawn_multiple_agents(agents)
       
       return if spawned_agents.empty?
       
       puts "\n🔴 Live output streaming started for #{spawned_agents.count} agents. Press Ctrl+C to stop watching.\n".colorize(:green)
       
       # Start streaming output for all agents
-      OutputStreamer.stream_agents(spawned_agents)
+      begin
+        OutputStreamer.stream_agents(spawned_agents)
+      rescue NameError
+        # Fallback: Use built-in monitoring if OutputStreamer doesn't exist
+        puts "🔍 Switching to built-in monitoring...".colorize(:blue)
+        @process_monitor.watch(interval: 3)
+      end
     end
 
     def spawn_single(task:, role:, worktree:)
       operation_id = "spawn_#{role}_#{Time.now.to_i}"
       Logger.log_operation(operation_id, 'started', { role: role, worktree: worktree })
-      
-      agent_prompt = build_agent_prompt(task, role)
-      args = ['start', '-p', agent_prompt]
-      args << '--worktree' if worktree && @config.worktree_enabled
 
       puts "🚀 Spawning #{role} agent...".colorize(:yellow)
 
       begin
-        pid = RetryHandler.with_retry(max_retries: 3) do
-          CommandExecutor.execute_async('claude-swarm', *args)
-        end
+        # Use built-in agent spawner
+        result = @agent_spawner.spawn_agent(
+          role: role,
+          task: task,
+          worktree: worktree && @config.worktree_enabled
+        )
         
-        puts '✅ Agent spawned successfully'.colorize(:green)
-        Logger.log_operation(operation_id, 'success', { role: role, pid: pid })
-        pid
-      rescue RetryHandler::RetryError, CommandExecutor::CommandError => e
+        if result
+          puts '✅ Agent spawned successfully'.colorize(:green)
+          Logger.log_operation(operation_id, 'success', { role: role, pid: result[:pid] })
+          result[:pid]
+        else
+          puts "❌ Failed to spawn agent".colorize(:red)
+          Logger.log_operation(operation_id, 'failed', { role: role, error: 'Spawn failed' })
+          false
+        end
+      rescue StandardError => e
         puts "❌ Failed to spawn agent: #{e.message}".colorize(:red)
         Logger.log_operation(operation_id, 'failed', { role: role, error: e.message })
-        
-        # Attempt cleanup on failure
-        CleanupManager.cleanup_failed_operation(operation_id, {
-          role: role,
-          worktree_path: worktree ? generate_worktree_path(role) : nil
-        })
-        
         false
       end
     end
@@ -205,14 +203,15 @@ module EnhanceSwarm
         # Add jitter to prevent resource contention
         sleep(2 + rand(0..2)) if index > 0
         
-        result = spawn_single(
-          task: agent[:task],
+        # Use built-in agent spawner
+        result = @agent_spawner.spawn_agent(
           role: agent[:role],
+          task: agent[:task],
           worktree: true
         )
         
         if result
-          spawned_agents << { **agent, pid: result }
+          spawned_agents << { **agent, pid: result[:pid] }
           tracker&.add_tokens(ProgressTracker.estimate_tokens_for_operation('spawn_agent'))
         else
           failed_agents << agent
@@ -233,49 +232,6 @@ module EnhanceSwarm
       { spawned: spawned_agents, failed: failed_agents }
     end
 
-    def build_agent_prompt(task, role)
-      # Sanitize inputs
-      safe_task = sanitize_task_description(task)
-      safe_role = sanitize_role(role)
-      safe_test_command = sanitize_command(@config.test_command)
-
-      timestamp = Time.now.strftime('%Y%m%d-%H%M%S')
-      task_words = safe_task.split.first(5).join(' ')
-
-      base_prompt = <<~PROMPT
-        AUTONOMOUS EXECUTION REQUIRED - #{safe_role.upcase} SPECIALIST
-
-        #{safe_task}
-
-        CRITICAL INSTRUCTIONS:
-        1. You have FULL PERMISSION to read, write, edit files and run commands
-        2. DO NOT wait for any permissions - proceed immediately
-        3. Complete the task fully and thoroughly
-        4. Test your implementation using: #{safe_test_command}
-        5. When complete:
-           - Run: git add -A
-           - Run: git commit -m '#{safe_role}: #{task_words}...'
-           - Run: git checkout -b 'swarm/#{safe_role}-#{timestamp}'
-           - Run: git push origin HEAD
-        6. Document what was implemented in your final message
-
-        Remember: You are autonomous. Make all decisions needed to complete this task successfully.
-      PROMPT
-
-      # Add role-specific instructions
-      case safe_role
-      when 'ux'
-        base_prompt += "\n\nFocus on UI/UX design, templates, and user experience."
-      when 'backend'
-        base_prompt += "\n\nFocus on models, services, APIs, and business logic."
-      when 'frontend'
-        base_prompt += "\n\nFocus on controllers, views, JavaScript, and integration."
-      when 'qa'
-        base_prompt += "\n\nFocus on comprehensive testing, edge cases, and quality assurance."
-      end
-
-      base_prompt
-    end
 
     def extract_ux_work(task)
       "Design and implement UI/UX for: #{task[:description]}"
@@ -293,18 +249,6 @@ module EnhanceSwarm
       "Write comprehensive tests for: #{task[:description]}"
     end
 
-    def sanitize_task_description(task)
-      # Remove potentially dangerous characters while preserving readability
-      task.to_s.gsub(/[`$\\]/, '').strip
-    end
-
-    def sanitize_role(role)
-      # Only allow known safe roles
-      allowed_roles = %w[ux backend frontend qa general]
-      role = role.to_s.downcase.strip
-      allowed_roles.include?(role) ? role : 'general'
-    end
-
     def sanitize_command(command)
       # Basic command sanitization - remove shell metacharacters
       command.to_s.gsub(/[;&|`$\\]/, '').strip
@@ -316,9 +260,11 @@ module EnhanceSwarm
       Shellwords.escape(arg.to_s)
     end
     
-    def generate_worktree_path(role)
-      timestamp = Time.now.strftime('%Y%m%d-%H%M%S')
-      File.join(EnhanceSwarm.root, 'worktrees', "swarm-#{role}-#{timestamp}")
+    def sanitize_role(role)
+      # Only allow known safe roles
+      allowed_roles = %w[ux backend frontend qa general]
+      role = role.to_s.downcase.strip
+      allowed_roles.include?(role) ? role : 'general'
     end
 
     def show_execution_plan(task)
@@ -329,12 +275,13 @@ module EnhanceSwarm
         puts "  - #{agent[:role].upcase}: #{agent[:task]}"
       end
 
-      puts "\nCommands that would be executed:"
-      puts "  1. #{sanitize_command(@config.task_move_command)} #{sanitize_argument(task[:id])} active"
-      agents.each do |agent|
-        cmd = 'claude-swarm start -p "..." --worktree'
-        puts "  2. #{cmd} (#{sanitize_role(agent[:role])} agent)"
+      puts "\nActions that would be executed:"
+      puts "  1. Create or resume agent session"
+      puts "  2. #{sanitize_command(@config.task_move_command)} #{sanitize_argument(task[:id])} active"
+      agents.each_with_index do |agent, index|
+        puts "  #{index + 3}. Spawn #{sanitize_role(agent[:role])} agent with git worktree"
       end
+      puts "  #{agents.count + 3}. Monitor agent progress"
     end
   end
 end

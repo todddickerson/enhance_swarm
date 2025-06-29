@@ -60,7 +60,7 @@ gem install pkg/enhance_swarm-*.gem
 
 # Check optional dependencies
 echo -e "\n${YELLOW}Checking optional dependencies...${NC}"
-check_dependency "claude-swarm" || echo "  ⚠️  Install claude-swarm for full functionality"
+check_dependency "claude" || echo "  ⚠️  Install Claude CLI for enhanced agent spawning"
 check_dependency "gemini" || echo "  ⚠️  Install Gemini CLI for large context analysis"
 
 # Initialize in current project if we're in a project directory

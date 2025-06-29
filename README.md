@@ -14,6 +14,7 @@ EnhanceSwarm transforms Claude into a sophisticated multi-agent development team
 - **🔍 Agent Review**: Monitor and track work across all agent worktrees
 - **⚡ Self-Healing**: Automatic retries, error recovery, and resource cleanup
 - **🛡️ Security First**: Command injection protection and secure execution
+- **🏗️ Self-Contained**: No external claude-swarm dependency - fully integrated agent management
 
 ## 🚀 Quick Installation
 
@@ -43,7 +44,7 @@ enhance-swarm init
 ### Option 3: Quick Setup Script
 
 ```bash
-# One-command setup (coming soon)
+# One-command setup with dependency checking
 curl -sSL https://raw.githubusercontent.com/todddickerson/enhance_swarm/main/setup.sh | bash
 ```
 
@@ -508,10 +509,11 @@ enhance-swarm suggest
 
 ```
 ┌─ Your Terminal ─────────────────────────────────────────┐
-│  enhance-swarm CLI (Ruby Orchestrator)                 │
+│  enhance-swarm CLI (Self-Contained Ruby Orchestrator)  │
+│  ├── Built-in Agent Spawning & Session Management      │
 │  ├── Progress Tracking & Live Streaming                │
-│  ├── Agent Review & Status Monitoring                  │  
-│  └── Resource Management & Cleanup                     │
+│  ├── Process Monitoring & Status Reporting             │  
+│  └── Git Worktree Management & Resource Cleanup        │
 └─────────────────────┬───────────────────────────────────┘
                       │
 ┌─ Control Agent ─────▼───────────────────────────────────┐
@@ -521,13 +523,13 @@ enhance-swarm suggest
 │  ├── Progress Monitoring & Handoff Decisions           │
 │  └── Conflict Resolution & Error Recovery              │
 └─────────────────────┬───────────────────────────────────┘
-                      │ spawns & coordinates
+                      │ spawns & coordinates via JSON
            ┌──────────┼──────────┬──────────┐
            ▼          ▼          ▼          ▼
     ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
     │🔧 Backend│ │🎨 Frontend│ │🧪 QA    │ │✨ UX     │
     │ Agent   │ │ Agent   │ │ Agent   │ │ Agent   │
-    │         │ │         │ │         │ │         │
+    │ Worktree│ │ Worktree│ │ Worktree│ │ Worktree│
     └─────────┘ └─────────┘ └─────────┘ └─────────┘
 ```
 
@@ -632,20 +634,28 @@ enhance-swarm doctor --detailed --json
 
 ## 🔧 Troubleshooting
 
+### Self-Contained Architecture
+
+✅ **No External Dependencies Required**
+- **Built-in agent spawning** - No need for external claude-swarm tool
+- **Session management** - JSON-based coordination and tracking
+- **Process monitoring** - Native PID management and status checking  
+- **Git worktree integration** - Direct git command execution
+
 ### Common Issues
 
 ```bash
 # Dependency problems
 enhance-swarm doctor
-# → Validates git, dependencies, system requirements
+# → Validates git, Ruby, and optional tools
 
 # Agent coordination issues  
 enhance-swarm status
-# → Shows stuck/failed agents
+# → Shows agent sessions and process status
 
 # Interactive troubleshooting
 enhance-swarm troubleshoot
-# → Guided problem diagnosis
+# → Guided problem diagnosis and system health checks
 ```
 
 ### Debug Mode

@@ -61,6 +61,43 @@ module EnhanceSwarm
       @last_update = Time.now
     end
 
+    # Display a static snapshot of agent status
+    def display_snapshot(agents = [])
+      @agents = agents.each_with_object({}) { |agent, hash| hash[agent[:id]] = agent }
+      
+      puts "📸 EnhanceSwarm Dashboard Snapshot".colorize(:cyan)
+      puts "─" * 50
+      puts "Timestamp: #{Time.now.strftime('%Y-%m-%d %H:%M:%S')}"
+      puts
+      
+      if @agents.empty?
+        puts "No agents currently running".colorize(:light_black)
+        return
+      end
+      
+      puts "🤖 Agent Status:".colorize(:blue)
+      @agents.each do |id, agent|
+        role = agent[:role] || 'unknown'
+        status = format_agent_status(agent)
+        progress = agent[:progress_percentage] || agent[:progress] || 0
+        duration = format_duration(agent)
+        
+        puts "  #{role.ljust(10)} │ #{status} │ #{progress}% │ #{duration}"
+      end
+      
+      puts
+      puts "System Resources:".colorize(:blue)
+      memory_info = get_memory_info
+      puts "  Memory: #{memory_info[:used_gb]}GB/#{memory_info[:total_gb]}GB (#{memory_info[:used_percent]}%)"
+      puts "  Active Processes: #{@agents.count { |_, agent| agent[:pid] }}"
+      
+      puts "\n📊 Summary:".colorize(:green)
+      puts "  Total Agents: #{@agents.count}"
+      puts "  Active: #{@agents.count { |_, agent| agent[:status] == 'active' || agent[:status] == 'running' }}"
+      puts "  Completed: #{@agents.count { |_, agent| agent[:status] == 'completed' }}"
+      puts "  Failed: #{@agents.count { |_, agent| agent[:status] == 'failed' }}"
+    end
+
     private
 
     def setup_terminal

@@ -10,12 +10,21 @@ module EnhanceSwarm
         check_command: 'git --version',
         version_regex: /git version (\d+\.\d+\.\d+)/,
         critical: true
-      },
-      'claude-swarm' => {
-        min_version: '0.1.0',
-        check_command: 'claude-swarm --version',
+      }
+    }.freeze
+
+    OPTIONAL_TOOLS = {
+      'claude' => {
+        min_version: '1.0.0',
+        check_command: 'claude --version',
         version_regex: /(\d+\.\d+\.\d+)/,
-        critical: false
+        description: 'Claude CLI for enhanced agent spawning'
+      },
+      'gemini' => {
+        min_version: '0.1.0',
+        check_command: 'gemini --version',
+        version_regex: /(\d+\.\d+\.\d+)/,
+        description: 'Gemini CLI for large context analysis'
       }
     }.freeze
 
@@ -23,6 +32,7 @@ module EnhanceSwarm
       results = {}
       all_critical_passed = true
 
+      # Check required tools
       REQUIRED_TOOLS.each do |tool, config|
         result = validate_tool(tool, config)
         results[tool] = result
@@ -30,6 +40,13 @@ module EnhanceSwarm
         if config[:critical] && !result[:passed]
           all_critical_passed = false
         end
+      end
+
+      # Check optional tools
+      OPTIONAL_TOOLS.each do |tool, config|
+        result = validate_tool(tool, config)
+        result[:optional] = true
+        results[tool] = result
       end
 
       # Check Ruby version
@@ -40,7 +57,8 @@ module EnhanceSwarm
       {
         passed: all_critical_passed,
         results: results,
-        summary: generate_summary(results)
+        summary: generate_summary(results),
+        optional_summary: generate_optional_summary(results)
       }
     end
 
@@ -114,11 +132,23 @@ module EnhanceSwarm
     end
 
     def self.generate_summary(results)
-      total = results.size
-      passed = results.count { |_, result| result[:passed] }
+      # Only count required tools for main summary
+      required_results = results.reject { |_, result| result[:optional] }
+      total = required_results.size
+      passed = required_results.count { |_, result| result[:passed] }
       failed = total - passed
 
-      "Dependency validation: #{passed}/#{total} passed"
+      "Dependency validation: #{passed}/#{total} required dependencies passed"
+    end
+
+    def self.generate_optional_summary(results)
+      optional_results = results.select { |_, result| result[:optional] }
+      return "No optional tools checked" if optional_results.empty?
+
+      total = optional_results.size
+      passed = optional_results.count { |_, result| result[:passed] }
+      
+      "Optional tools: #{passed}/#{total} available"
     end
 
     # Functional validation beyond version checking
@@ -128,8 +158,8 @@ module EnhanceSwarm
       # Test git functionality
       validations[:git_functional] = test_git_functionality
       
-      # Test claude-swarm functionality if available
-      validations[:claude_swarm_functional] = test_claude_swarm_functionality
+      # Test enhance-swarm built-in functionality
+      validations[:session_manager_functional] = test_session_manager_functionality
 
       validations
     end
@@ -147,13 +177,18 @@ module EnhanceSwarm
       end
     end
 
-    def self.test_claude_swarm_functionality
+    def self.test_session_manager_functionality
       begin
-        # Test claude-swarm basic command
-        CommandExecutor.execute('claude-swarm', 'help', timeout: 10)
+        # Test built-in session manager
+        require_relative 'session_manager'
+        session_manager = EnhanceSwarm::SessionManager.new
+        
+        # Try to read session status (should work even if no session exists)
+        session_status = session_manager.session_status
+        
         { passed: true, error: nil }
-      rescue CommandExecutor::CommandError => e
-        { passed: false, error: "Claude-swarm functionality test failed: #{e.message}" }
+      rescue StandardError => e
+        { passed: false, error: "Session manager functionality test failed: #{e.message}" }
       end
     end
   end

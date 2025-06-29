@@ -111,10 +111,12 @@ module EnhanceSwarm
     desc 'status', 'Show status of all swarm operations'
     option :json, type: :boolean, desc: 'Output status in JSON format'
     def status
-      monitor = Monitor.new
-      status = monitor.status
+      # Use built-in process monitor
+      require_relative 'process_monitor'
+      process_monitor = ProcessMonitor.new
       
       if options[:json]
+        status = process_monitor.status
         puts JSON.pretty_generate({
           timestamp: Time.now.iso8601,
           status: status,
@@ -123,17 +125,8 @@ module EnhanceSwarm
         return
       end
 
-      say "\n📊 Swarm Status:", :green
-      say "  Active agents: #{status[:active_agents]}", status[:active_agents] > 0 ? :yellow : :white
-      say "  Completed tasks: #{status[:completed_tasks]}", :green
-      say "  Worktrees: #{status[:worktrees].count}", :blue
-
-      if status[:recent_branches].any?
-        say "\n📌 Recent branches:", :yellow
-        status[:recent_branches].each do |branch|
-          say "  - #{branch}"
-        end
-      end
+      # Use built-in display
+      process_monitor.display_status
       
       # Show health summary
       health = system_health_summary

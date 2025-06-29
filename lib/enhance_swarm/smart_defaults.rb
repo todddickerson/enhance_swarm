@@ -699,6 +699,10 @@ module EnhanceSwarm
       def learn_from_action(*args)
         instance.learn_from_action(*args)
       end
+
+      def get_suggestions(context = {})
+        instance.suggest_next_actions(context)
+      end
     end
   end
 end

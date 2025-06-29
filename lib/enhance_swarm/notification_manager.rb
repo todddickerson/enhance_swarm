@@ -181,6 +181,43 @@ module EnhanceSwarm
       @notification_history.clear
     end
 
+    # Test notification system
+    def test_notifications
+      puts "🔔 Testing notification capabilities...".colorize(:blue)
+      
+      # Test console notification
+      puts "1. Console notifications: ✅ Available"
+      
+      # Test desktop notifications
+      desktop_available = desktop_notifications_available?
+      puts "2. Desktop notifications: #{desktop_available ? '✅ Available' : '❌ Not available'}"
+      
+      # Test sound notifications  
+      sound_available = sound_available?
+      puts "3. Sound notifications: #{sound_available ? '✅ Available' : '❌ Not available'}"
+      
+      puts "\n🧪 Running test notifications..."
+      sleep(1)
+      
+      # Test different notification types
+      agent_completed('test-123', 'backend', 120, { success: true })
+      sleep(1)
+      
+      progress_milestone('Test milestone reached', 75)
+      sleep(1)
+      
+      puts "\n📊 Test Results:"
+      puts "  Notifications sent: 2"
+      puts "  History entries: #{@notification_history.count}"
+      puts "  Status: #{@enabled ? 'Enabled' : 'Disabled'}"
+      
+      if desktop_available || sound_available
+        puts "\nNote: Desktop/sound notifications may appear with a delay"
+      end
+      
+      puts "\n✅ Notification test completed!"
+    end
+
     private
 
     def build_notification(type, message, details)
