@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'psych'
+require_relative 'project_analyzer'
 
 module EnhanceSwarm
   class Configuration
@@ -12,37 +13,13 @@ module EnhanceSwarm
                   :mcp_tools, :gemini_enabled, :desktop_commander_enabled
 
     def initialize
-      # Project defaults
-      @project_name = 'Project'
-      @project_description = 'A project managed by EnhanceSwarm'
-      @technology_stack = 'Ruby on Rails'
-
-      # Commands
-      @test_command = 'bundle exec rails test'
-      @task_command = 'bundle exec swarm-tasks'
-      @task_move_command = 'bundle exec swarm-tasks move'
-
-      # Standards
-      @code_standards = default_code_standards
-      @important_notes = []
-
-      # Orchestration settings
-      @max_concurrent_agents = 4
-      @monitor_interval = 30
-      @monitor_timeout = 120 # 2 minutes max per monitoring session
-      @worktree_enabled = true
-
-      # MCP settings
-      @mcp_tools = {
-        context7: true,
-        sequential: true,
-        magic_ui: true,
-        puppeteer: true
-      }
-      @gemini_enabled = true
-      @desktop_commander_enabled = true
-
-      load_from_file if config_file_exists?
+      # Apply smart defaults from project analysis if no config exists
+      if config_file_exists?
+        apply_hardcoded_defaults
+        load_from_file
+      else
+        apply_smart_defaults
+      end
     end
 
     def to_h
@@ -80,6 +57,148 @@ module EnhanceSwarm
     end
 
     private
+
+    def apply_hardcoded_defaults
+      # Project defaults
+      @project_name = 'Project'
+      @project_description = 'A project managed by EnhanceSwarm'
+      @technology_stack = 'Ruby on Rails'
+
+      # Commands
+      @test_command = 'bundle exec rails test'
+      @task_command = 'bundle exec swarm-tasks'
+      @task_move_command = 'bundle exec swarm-tasks move'
+
+      # Standards
+      @code_standards = default_code_standards
+      @important_notes = []
+
+      # Orchestration settings
+      @max_concurrent_agents = 4
+      @monitor_interval = 30
+      @monitor_timeout = 120 # 2 minutes max per monitoring session
+      @worktree_enabled = true
+
+      # MCP settings
+      @mcp_tools = {
+        context7: true,
+        sequential: true,
+        magic_ui: true,
+        puppeteer: true
+      }
+      @gemini_enabled = true
+      @desktop_commander_enabled = true
+    end
+
+    def apply_smart_defaults
+      Logger.info("No configuration file found, applying smart defaults based on project analysis")
+      
+      # Analyze the current project
+      analyzer = ProjectAnalyzer.new
+      analyzer.analyze
+      smart_defaults = analyzer.generate_smart_defaults
+
+      # Apply smart defaults with fallbacks
+      @project_name = smart_defaults[:project_name] || File.basename(Dir.pwd)
+      @project_description = smart_defaults[:project_description] || 'A project managed by EnhanceSwarm'
+      @technology_stack = smart_defaults[:technology_stack]&.join(', ') || 'Multiple Technologies'
+
+      # Smart command detection
+      @test_command = smart_defaults[:test_command] || detect_test_command_fallback
+      @task_command = 'bundle exec swarm-tasks'
+      @task_move_command = 'bundle exec swarm-tasks move'
+
+      # Code standards based on project type
+      @code_standards = generate_smart_code_standards(analyzer.analysis_results[:project_type])
+      @important_notes = generate_smart_notes(analyzer.analysis_results)
+
+      # Orchestration settings based on project size
+      @max_concurrent_agents = smart_defaults[:max_concurrent_agents] || 3
+      @monitor_interval = 30
+      @monitor_timeout = 120
+      @worktree_enabled = true
+
+      # MCP settings - enable all by default for smart detection
+      @mcp_tools = {
+        context7: true,
+        sequential: true,
+        magic_ui: analyzer.analysis_results[:frontend_framework] ? true : false,
+        puppeteer: analyzer.analysis_results[:testing_framework]&.any? { |f| f.include?('Cypress') || f.include?('Playwright') } || false
+      }
+      @gemini_enabled = true
+      @desktop_commander_enabled = smart_defaults[:has_documentation] || false
+
+      Logger.info("Applied smart defaults for #{@project_name} (#{@technology_stack})")
+    end
+
+    def detect_test_command_fallback
+      return 'bundle exec rspec' if File.exist?('spec')
+      return 'bundle exec rails test' if File.exist?('test')
+      return 'npm test' if File.exist?('package.json')
+      return 'pytest' if File.exist?('pytest.ini') || File.exist?('conftest.py')
+      
+      'echo "No test command configured"'
+    end
+
+    def generate_smart_code_standards(project_type)
+      base_standards = [
+        'Follow framework conventions',
+        'Write tests for all new features',
+        'Use clear, descriptive naming'
+      ]
+
+      case project_type
+      when 'rails'
+        base_standards + [
+          'Use service objects for business logic',
+          'Keep controllers thin',
+          'Use strong validations in models'
+        ]
+      when 'react', 'vue', 'angular', 'nextjs'
+        base_standards + [
+          'Use functional components with hooks',
+          'Implement proper state management',
+          'Optimize for performance and accessibility'
+        ]
+      when 'django', 'flask'
+        base_standards + [
+          'Follow MVC patterns',
+          'Use proper authentication and authorization',
+          'Implement comprehensive API documentation'
+        ]
+      else
+        base_standards + [
+          'Maintain consistent code style',
+          'Document complex logic',
+          'Use version control best practices'
+        ]
+      end
+    end
+
+    def generate_smart_notes(analysis_results)
+      notes = []
+
+      if analysis_results[:documentation]&.dig(:has_docs)
+        notes << "Project has documentation in #{analysis_results[:documentation][:primary_path]} - consider this context for changes"
+      end
+
+      if analysis_results[:testing_framework]&.any?
+        frameworks = analysis_results[:testing_framework].join(', ')
+        notes << "Testing framework(s) detected: #{frameworks} - ensure new features include tests"
+      end
+
+      if analysis_results[:deployment]&.any?
+        deployments = analysis_results[:deployment].join(', ')
+        notes << "Deployment configurations found: #{deployments} - consider deployment impact for changes"
+      end
+
+      if analysis_results[:database]&.any?
+        databases = analysis_results[:database].join(', ')
+        notes << "Database(s) in use: #{databases} - consider data migration needs"
+      end
+
+      notes
+    end
 
     def config_file_path
       File.join(EnhanceSwarm.root, '.enhance_swarm.yml')

@@ -9,6 +9,7 @@ require_relative 'cleanup_manager'
 require_relative 'session_manager'
 require_relative 'agent_spawner'
 require_relative 'process_monitor'
+require_relative 'task_integration'
 
 module EnhanceSwarm
   class Orchestrator
@@ -18,6 +19,7 @@ module EnhanceSwarm
       @session_manager = SessionManager.new
       @agent_spawner = AgentSpawner.new
       @process_monitor = ProcessMonitor.new
+      @task_integration = TaskIntegration.new
     end
 
     def enhance(task_id: nil, dry_run: false, follow: false)
@@ -149,6 +151,14 @@ module EnhanceSwarm
         Logger.log_operation(operation_id, 'failed', { role: role, error: e.message })
         false
       end
+    end
+
+    def get_task_management_data
+      @task_integration.get_kanban_data
+    end
+
+    def setup_task_management
+      @task_integration.setup_task_management
     end
 
     private

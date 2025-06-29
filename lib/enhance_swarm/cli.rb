@@ -2,6 +2,7 @@
 
 require 'thor'
 require 'colorize'
+require_relative 'web_ui'
 
 module EnhanceSwarm
   class CLI < Thor
@@ -1549,6 +1550,21 @@ module EnhanceSwarm
       end
       
       context
+    end
+
+    desc 'ui', 'Start the EnhanceSwarm Web UI'
+    option :port, type: :numeric, default: 4567, desc: 'Port to run the web server on'
+    option :host, type: :string, default: 'localhost', desc: 'Host to bind the web server to'
+    def ui
+      say '🌐 Starting EnhanceSwarm Web UI...', :blue
+
+      web_ui = WebUI.new(port: options[:port], host: options[:host])
+      web_ui.start
+    rescue Interrupt
+      say '\n👋 Web UI stopped', :yellow
+    rescue StandardError => e
+      say "❌ Failed to start Web UI: #{e.message}", :red
+      exit 1
     end
   end
 end

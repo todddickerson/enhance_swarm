@@ -1,0 +1,36 @@
+{
+  "actions": {
+    "spawn": {
+      "count": 1,
+      "last_used": "2025-06-29T09:24:55+02:00",
+      "success_rate": 1.0,
+      "preferences": {
+        "role": {
+          "frontend": 1
+        },
+        "worktree": {
+          "true": 1
+        },
+        "follow": {
+          "false": 1
+        }
+      }
+    },
+    "enhance": {
+      "count": 2,
+      "last_used": "2025-06-29T09:25:19+02:00",
+      "success_rate": 1.0,
+      "preferences": {
+        "control_agent": {
+          "true": 2
+        },
+        "follow": {
+          "false": 2
+        },
+        "notifications": {
+          "true": 2
+        }
+      }
+    }
+  }
+}
