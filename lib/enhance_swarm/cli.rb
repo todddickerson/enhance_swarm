@@ -4,6 +4,8 @@ require 'thor'
 require 'colorize'
 require_relative 'web_ui'
 require_relative 'session_manager'
+require_relative 'task_coordinator'
+require_relative 'smart_orchestration'
 
 module EnhanceSwarm
   class CLI < Thor
@@ -54,15 +56,46 @@ module EnhanceSwarm
         notifications: options[:notifications]
       })
 
-      if options[:control_agent] && !options[:dry_run]
-        enhance_with_control_agent
-      else
-        orchestrator = Orchestrator.new
-        orchestrator.enhance(
-          task_id: options[:task],
-          dry_run: options[:dry_run],
-          follow: options[:follow]
-        )
+      # Get task description from user
+      print "Enter task description: "
+      task_description = $stdin.gets.chomp
+      
+      # Use smart orchestration by default
+      begin
+        SmartOrchestration.enhance_with_coordination(task_description)
+        say "✅ Smart orchestration completed successfully!", :green
+      rescue StandardError => e
+        say "❌ Smart orchestration failed, falling back to control agent", :yellow
+        Logger.error("Smart orchestration error: #{e.message}")
+        
+        if options[:control_agent] && !options[:dry_run]
+          enhance_with_control_agent_manual(task_description)
+        else
+          orchestrator = Orchestrator.new
+          orchestrator.enhance(
+            task_id: options[:task],
+            dry_run: options[:dry_run],
+            follow: options[:follow]
+          )
+        end
+      end
+    end
+
+    desc 'orchestrate TASK_DESC', 'Intelligent multi-agent orchestration with smart coordination'
+    option :coordination, type: :boolean, default: true, desc: 'Enable intelligent task coordination'
+    option :follow, type: :boolean, default: false, desc: 'Stream live output from all agents'
+    def orchestrate(task_desc)
+      say "🎯 Starting intelligent multi-agent orchestration", :blue
+      say "Task: #{task_desc}", :white
+      
+      begin
+        coordinator = TaskCoordinator.new
+        coordinator.coordinate_task(task_desc)
+        
+        say "✅ Multi-agent orchestration completed successfully!", :green
+      rescue StandardError => e
+        say "❌ Orchestration failed: #{e.message}", :red
+        say "Debug info: #{e.backtrace.first(3).join("\n")}", :yellow
       end
     end
 

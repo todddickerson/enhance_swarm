@@ -90,8 +90,8 @@ module EnhanceSwarm
           
           streamer.set_progress(progress,
                               message: message,
-                              operation: 'control_coordination',
                               details: {
+                                operation: 'control_coordination',
                                 phase: status['phase'],
                                 active_agents: status['active_agents']&.length || 0,
                                 completed_agents: status['completed_agents']&.length || 0
