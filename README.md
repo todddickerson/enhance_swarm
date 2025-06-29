@@ -57,10 +57,24 @@ EnhanceSwarm v1.0 transforms Claude into a sophisticated multi-agent development
 
 ### Installation Options
 
-#### Option 1: Add to Existing Project (Recommended)
+#### Option 1: RubyGems (Recommended)
 
 ```bash
-# Add to your Gemfile
+# Install the gem
+gem install enhance_swarm
+
+# Or add to your Gemfile
+echo 'gem "enhance_swarm", "~> 1.0"' >> Gemfile
+bundle install
+
+# Initialize in your project
+enhance-swarm init
+```
+
+#### Option 2: From Source (Development)
+
+```bash
+# Add to your Gemfile for latest development version
 echo 'gem "enhance_swarm", git: "https://github.com/todddickerson/enhance_swarm.git"' >> Gemfile
 bundle install
 
@@ -68,7 +82,7 @@ bundle install
 bundle exec enhance-swarm init
 ```
 
-#### Option 2: Global Installation
+#### Option 3: Global Installation from Source
 
 ```bash
 # Clone and install globally
