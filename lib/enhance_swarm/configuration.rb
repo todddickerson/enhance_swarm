@@ -10,7 +10,8 @@ module EnhanceSwarm
                   :code_standards, :important_notes,
                   :max_concurrent_agents, :monitor_interval,
                   :monitor_timeout, :worktree_enabled,
-                  :mcp_tools, :gemini_enabled, :desktop_commander_enabled
+                  :mcp_tools, :gemini_enabled, :desktop_commander_enabled,
+                  :max_memory_mb, :max_disk_mb
 
     def initialize
       # Apply smart defaults from project analysis if no config exists
@@ -78,6 +79,10 @@ module EnhanceSwarm
       @monitor_interval = 30
       @monitor_timeout = 120 # 2 minutes max per monitoring session
       @worktree_enabled = true
+
+      # Resource limits
+      @max_memory_mb = 2048  # 2GB max memory for all agents
+      @max_disk_mb = 1024    # 1GB max disk usage
 
       # MCP settings
       @mcp_tools = {

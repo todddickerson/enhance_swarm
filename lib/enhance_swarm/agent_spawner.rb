@@ -5,16 +5,26 @@ require 'tempfile'
 require_relative 'command_executor'
 require_relative 'session_manager'
 require_relative 'logger'
+require_relative 'resource_manager'
 
 module EnhanceSwarm
   class AgentSpawner
     def initialize
       @config = EnhanceSwarm.configuration
       @session_manager = SessionManager.new
+      @resource_manager = ResourceManager.new
     end
 
     def spawn_agent(role:, task:, worktree: true)
       Logger.info("Spawning #{role} agent for task: #{task}")
+      
+      # Check resource limits before spawning
+      resource_check = @resource_manager.can_spawn_agent?
+      unless resource_check[:allowed]
+        Logger.error("Cannot spawn agent - resource limits exceeded:")
+        resource_check[:reasons].each { |reason| Logger.error("  - #{reason}") }
+        return false
+      end
       
       begin
         # Create worktree if requested
@@ -434,7 +444,7 @@ module EnhanceSwarm
 
     def sanitize_task_description(task)
       # Remove potentially dangerous characters while preserving readability
-      task.to_s.gsub(/[`$\\]/, '').strip
+      task.to_s.gsub(/[`$\\;|&><]/, '').strip
     end
 
     def sanitize_role(role)

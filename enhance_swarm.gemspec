@@ -38,6 +38,9 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'psych', '~> 5.1'
   spec.add_dependency 'thor', '~> 1.3'
   spec.add_dependency 'webrick', '~> 1.8'
+  spec.add_dependency 'tty-table', '~> 0.12'
+  spec.add_dependency 'tty-prompt', '~> 0.23'
+  spec.add_dependency 'fileutils', '~> 1.7'
   
   # Task management - note: install separately with: gem install swarm_tasks
   # spec.add_dependency 'swarm_tasks' # Uncomment when gem is published
