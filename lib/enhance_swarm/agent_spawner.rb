@@ -286,6 +286,8 @@ module EnhanceSwarm
         'You specialize in user experience design, interaction flows, accessibility, and user-centric improvements.'
       when 'general'
         'You are a general-purpose agent capable of handling various development tasks across the full stack.'
+      when 'scaffolding'
+        'You specialize in Bullet Train Super Scaffolding, following Andrew Culver\'s conventions for team-scoped architecture, model relationships, and framework configuration.'
       else
         "You are a #{role} specialist agent focusing on your area of expertise."
       end
@@ -417,6 +419,8 @@ module EnhanceSwarm
         base_prompt += "\n\nFOCUS: Controllers, views, JavaScript, forms, user interactions, and integration."
       when 'qa'
         base_prompt += "\n\nFOCUS: Comprehensive testing, edge cases, quality assurance, and validation."
+      when 'scaffolding'
+        base_prompt += "\n\nFOCUS: Bullet Train Super Scaffolding, Andrew Culver's best practices, team-scoped architecture, and framework setup."
       end
 
       base_prompt
@@ -449,7 +453,7 @@ module EnhanceSwarm
 
     def sanitize_role(role)
       # Only allow known safe roles
-      allowed_roles = %w[ux backend frontend qa general]
+      allowed_roles = %w[ux backend frontend qa general scaffolding]
       role = role.to_s.downcase.strip
       allowed_roles.include?(role) ? role : 'general'
     end

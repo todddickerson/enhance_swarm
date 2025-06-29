@@ -1,0 +1,33 @@
+---
+:project:
+  :name: enhance_swarm
+  :description: Software project using Ruby, JavaScript
+  :technology_stack: Ruby, JavaScript
+:commands:
+  :test: echo "No test command configured"
+  :task: bundle exec swarm-tasks
+  :task_move: bundle exec swarm-tasks move
+:orchestration:
+  :max_concurrent_agents: 3
+  :monitor_interval: 30
+  :monitor_timeout: 120
+  :worktree_enabled: true
+:mcp:
+  :tools:
+    :context7: true
+    :sequential: true
+    :magic_ui: false
+    :puppeteer: false
+  :gemini_enabled: true
+  :desktop_commander_enabled: true
+:standards:
+  :code:
+  - Follow framework conventions
+  - Write tests for all new features
+  - Use clear, descriptive naming
+  - Maintain consistent code style
+  - Document complex logic
+  - Use version control best practices
+  :notes:
+  - Project has documentation in  - consider this context for changes
+  - 'Testing framework(s) detected: RSpec - ensure new features include tests'

@@ -91,6 +91,52 @@ module EnhanceSwarm
     end
 
     def create_full_feature_subtasks(description, project_type)
+      # Check if this is a Bullet Train project and use scaffolding worker
+      if tech_stack_includes_bullet_train?
+        create_bullet_train_subtasks(description, project_type)
+      else
+        create_standard_subtasks(description, project_type)
+      end
+    end
+
+    def create_bullet_train_subtasks(description, project_type)
+      [
+        {
+          id: "scaffolding-#{Time.now.to_i}",
+          role: 'scaffolding',
+          description: "Plan and execute Bullet Train Super Scaffolding for: #{description}",
+          dependencies: [],
+          priority: 1,
+          context: build_scaffolding_context(project_type)
+        },
+        {
+          id: "backend-#{Time.now.to_i + 1}",
+          role: 'backend',
+          description: "Implement business logic and team-scoped models for: #{description}",
+          dependencies: ["scaffolding-#{Time.now.to_i}"],
+          priority: 2,
+          context: build_backend_context(project_type)
+        },
+        {
+          id: "frontend-#{Time.now.to_i + 2}",
+          role: 'frontend',
+          description: "Customize UI and enhance generated views for: #{description}",
+          dependencies: ["scaffolding-#{Time.now.to_i}", "backend-#{Time.now.to_i + 1}"],
+          priority: 3,
+          context: build_frontend_context(project_type)
+        },
+        {
+          id: "qa-#{Time.now.to_i + 3}",
+          role: 'qa',
+          description: "Test scaffolded functionality and add comprehensive tests for: #{description}",
+          dependencies: ["backend-#{Time.now.to_i + 1}", "frontend-#{Time.now.to_i + 2}"],
+          priority: 4,
+          context: build_qa_context(project_type)
+        }
+      ]
+    end
+
+    def create_standard_subtasks(description, project_type)
       [
         {
           id: "backend-#{Time.now.to_i}",
@@ -253,6 +299,40 @@ module EnhanceSwarm
         best_practices: get_integration_best_practices(project_type),
         shared_knowledge: "Ensure all pieces work together seamlessly"
       }
+    end
+
+    def build_scaffolding_context(project_type)
+      {
+        role_focus: "You are a Bullet Train Scaffolding Specialist following Andrew Culver's methodologies",
+        responsibilities: [
+          "Plan and execute Super Scaffolding with proper model relationships",
+          "Follow Andrew Culver's namespacing conventions exactly",
+          "Ensure team-scoped architecture from the start", 
+          "Configure all Bullet Train plugins and integrations",
+          "Use bin/resolve to properly eject and customize gem files",
+          "Set up roles, permissions, and billing configurations",
+          "Establish proper API endpoints and webhook architecture"
+        ],
+        best_practices: [
+          "ALWAYS use magic comments (# 🚅) for Super Scaffolding insertion points",
+          "Models use gem concerns (include ModelNames::Base) - most logic is in gems",
+          "Use BULLET_TRAIN_VERSION constant for version synchronization",
+          "Primary model NOT in own namespace (e.g., Subscription, Subscriptions::Plan)",
+          "Team-based ownership over user-based ownership",
+          "Use bin/resolve --interactive for complex file discovery",
+          "Follow shallow nesting with namespace :v1 for API routes",
+          "Configure real BT roles structure with manageable_roles",
+          "Use bin/configure and bin/setup for project initialization"
+        ],
+        shared_knowledge: "You are the expert on Bullet Train architecture and must establish the foundation correctly for other agents to build upon"
+      }
+    end
+
+    def tech_stack_includes_bullet_train?
+      return true if has_bullet_train?(@project_analyzer.generate_smart_defaults)
+      
+      tech_stack = @project_analyzer.generate_smart_defaults[:technology_stack] || []
+      tech_stack.include?('Bullet Train')
     end
 
     def build_infrastructure_context(project_type)
@@ -842,55 +922,189 @@ module EnhanceSwarm
     def bullet_train_optimizations
       {
         execution_strategy: <<~STRATEGY,
-          🚀 BULLET TRAIN EXECUTION PROTOCOL (v1.24.0):
-          1. Use Super Scaffolding for ALL CRUD operations
-             - rails generate super_scaffold ModelName Team field:field_type
-             - Creates ~30 production-ready files per model
-          2. Build team-scoped models with proper multi-tenancy
-             - belongs_to :team, -> { includes(:users) }
-             - Team.find(current_team) scope pattern
-          3. Create dual controller architecture (web + API)
-             - app/controllers/account/ for web UI
-             - app/controllers/api/v1/ for JSON API
-          4. Generate proper field types for forms
-             - text_field, trix_editor, super_select, date_field
-             - Use Bullet Train field generators for complex inputs
-          5. Implement CanCanCan permissions with team scoping
-             - Define abilities in app/models/ability.rb
-             - Use team-based resource authorization
-          6. Configure webhooks and real-time features
-             - ActionCable + CableReady for live updates
-             - bullet_train-outgoing_webhooks for integrations
-          7. Follow Bullet Train routing conventions
-             - config/routes/api/v1.rb for API routes
-             - Namespace: account for web, api/v1 for API
+          🚀 BULLET TRAIN EXECUTION PROTOCOL (v1.24.0) with FULL PLUGIN ECOSYSTEM:
           
-          🎯 BULLET TRAIN SPECIFIC COMMANDS:
-          - Write("app/models/project.rb", bt_model_with_team_scope)
-          - Write("app/controllers/account/projects_controller.rb", bt_controller)
-          - Write("config/routes/api/v1.rb", api_routes)
-          - Generate with: rails generate super_scaffold Project Team name:text_field
-          - Write("app/models/ability.rb", cancancan_abilities)
+          ## 1. BULLET TRAIN GEMFILE WITH VERSION SYNC (REAL STRUCTURE)
+          Essential Gemfile setup:
+          ```ruby
+          # Version sync constant (CRITICAL for BT apps)
+          BULLET_TRAIN_VERSION = "1.24.0"
+          
+          # Core packages
+          gem "bullet_train", BULLET_TRAIN_VERSION
+          gem "bullet_train-super_scaffolding", BULLET_TRAIN_VERSION
+          gem "bullet_train-api", BULLET_TRAIN_VERSION
+          gem "bullet_train-outgoing_webhooks", BULLET_TRAIN_VERSION
+          gem "bullet_train-incoming_webhooks", BULLET_TRAIN_VERSION
+          gem "bullet_train-themes", BULLET_TRAIN_VERSION
+          gem "bullet_train-themes-light", BULLET_TRAIN_VERSION
+          gem "bullet_train-integrations", BULLET_TRAIN_VERSION
+          gem "bullet_train-integrations-stripe", BULLET_TRAIN_VERSION
+          
+          # Optional support packages
+          gem "bullet_train-sortable", BULLET_TRAIN_VERSION
+          gem "bullet_train-obfuscates_id", BULLET_TRAIN_VERSION
+          
+          # Core dependencies (keep version sync)
+          gem "bullet_train-fields", BULLET_TRAIN_VERSION
+          gem "bullet_train-has_uuid", BULLET_TRAIN_VERSION
+          gem "bullet_train-roles", BULLET_TRAIN_VERSION
+          gem "bullet_train-scope_validator", BULLET_TRAIN_VERSION
+          gem "bullet_train-super_load_and_authorize_resource", BULLET_TRAIN_VERSION
+          gem "bullet_train-themes-tailwind_css", BULLET_TRAIN_VERSION
+          
+          # Additional essentials
+          gem "devise"
+          gem "pagy"
+          gem "sidekiq"
+          ```
+          
+          ## 2. GEM UNBUNDLING AWARENESS & FILE RESOLUTION
+          🔍 CRITICAL: Many files are HIDDEN in gems and need unbundling for customization
+          
+          **Before modifying ANY file, use bin/resolve to find and eject:**
+          - bin/resolve ClassName --eject --open (controllers, models)
+          - bin/resolve partial_name --eject (views)
+          - bin/resolve en.translation.key --open (i18n)
+          - bin/resolve --interactive (for complex discovery)
+          
+          **File Discovery Methods:**
+          - Check HTML annotations: <!-- BEGIN /path/to/gem/file -->
+          - Use ?show_locales=true in URLs for translation keys
+          - Look for gem paths in error messages
+          - Scan framework concerns: include ModelNameBase
+          
+          ## 3. MAGIC COMMENTS & GEM CONCERNS (REAL BT PATTERN)
+          🔍 **CRITICAL: Use magic comments for Super Scaffolding insertion points**
+          
+          **Model Pattern (EXACT structure):**
+          ```ruby
+          class ModelName < ApplicationRecord
+            include ModelNames::Base  # Gem concern with most logic
+            include Webhooks::Outgoing::TeamSupport
+            # 🚅 add concerns above.
+            
+            # 🚅 add belongs_to associations above.
+            # 🚅 add has_many associations above.
+            # 🚅 add oauth providers above.
+            # 🚅 add has_one associations above.
+            # 🚅 add scopes above.
+            # 🚅 add validations above.
+            # 🚅 add callbacks above.
+            # 🚅 add delegations above.
+            # 🚅 add methods above.
+          end
+          ```
+          
+          **Super Scaffolding Commands:**
+          - rails generate super_scaffold ModelName Team field:field_type
+          - rails generate super_scaffold:field ModelName new_field:field_type
+          - rails generate super_scaffold:join_model --help for many-to-many
+          
+          **Namespacing Rules (Culver Convention):**
+          - ✅ Primary model NOT in own namespace: Subscription, Subscriptions::Plan
+          - ❌ Never: Subscriptions::Subscription
+          - Use simple associations within namespace: belongs_to :question (not :surveys_question)
+          
+          ## 4. TEAM-CENTRIC ARCHITECTURE (Culver Philosophy)
+          "Most domain models should belong to a team, not a user"
+          - Model resources as team-based by default
+          - Users belong to teams through Membership model
+          - Assign entities to memberships, not users directly
+          - Enable collaborative access over individual ownership
+          
+          ## 5. ROLE SYSTEM CONFIGURATION (REAL BT STRUCTURE)
+          **config/models/roles.yml setup:**
+          ```yaml
+          default:
+            models:
+              Team: read
+              Membership:
+                - read
+                - search
+              Platform::Application: read
+              Webhooks::Outgoing::Endpoint: manage
+              Webhooks::Outgoing::Event: read
+              Invitation:
+                - read
+                - create
+                - destroy
+          
+          editor:
+            models:
+              YourModel::TangibleThing: manage
+              YourModel::CreativeConcept:
+                - read
+                - update
+          
+          admin:
+            includes:
+              - editor
+            manageable_roles:
+              - admin
+              - editor
+            models:
+              Team: manage
+              Membership: manage
+              YourModel::CreativeConcept: manage
+              Platform::Application: manage
+          ```
+          
+          ## 6. BILLING & STRIPE INTEGRATION
+          - Use bullet_train-billing for subscription management
+          - bullet_train-billing-stripe for payment processing
+          - Configure per-user and per-unit pricing
+          - Implement plan limits and enforcement
+          
+          ## 7. WEBHOOK ARCHITECTURE
+          - bullet_train-outgoing_webhooks for user-configurable webhooks
+          - bullet_train-incoming_webhooks for external service integration
+          - JSON:API compliant webhook payloads
+          
+          🎯 BULLET TRAIN SPECIFIC COMMANDS (REAL BT WORKFLOW):
+          **Project Setup:**
+          - bundle install (all plugins with version sync)
+          - bin/configure (initial BT setup)
+          - bin/setup (database and assets)
+          
+          **Super Scaffolding Workflow:**
+          - rails generate super_scaffold Project Team name:text_field description:trix_editor
+          - bin/resolve Projects::Base --eject --open (if customization needed)
+          - bin/resolve account/projects/_form --eject (for view customization)
+          
+          **File Creation with Magic Comments:**
+          - Write("app/models/project.rb", model_with_magic_comments)
+          - Write("config/models/roles.yml", real_bt_roles_structure)  
+          - Write("config/routes/api/v1.rb", shallow_nested_routes)
+          
+          **Essential BT Commands:**
+          - bin/resolve --interactive (for file discovery)
+          - bin/super-scaffold (alias for rails generate super_scaffold)
+          - bin/theme (for theme customization)
+          - bin/hack (for local gem development)
         STRATEGY
         file_structure: %w[
           app/models app/controllers/account app/controllers/api/v1 
-          app/views/account config/routes/api config/locales
-          spec/models spec/controllers spec/system
+          app/views/account config/routes/api config/locales config/models
+          spec/models spec/controllers spec/system spec/requests
         ],
         conventions: [
-          'Team-scoped multi-tenancy', 
-          'Super Scaffolding for CRUD',
-          'CanCanCan permissions',
-          'ActionCable real-time',
-          'JSON:API compliant',
-          'Dual web/API architecture'
+          'Andrew Culver namespacing rules',
+          'Team-scoped multi-tenancy by default', 
+          'Super Scaffolding for all CRUD',
+          'bin/resolve before any file modification',
+          'Prefer concerns over full ejection',
+          'Full plugin ecosystem utilization',
+          'Role-based permissions with inheritance',
+          'Billing and Stripe integration ready'
         ],
         commands: [
           'bundle install',
+          'bin/resolve --interactive',
           'rails generate super_scaffold',
+          'bin/resolve ClassName --eject --open',
           'rails db:migrate',
-          'rspec',
-          'bin/resolve' # For framework overrides
+          'rspec'
         ]
       }
     end
