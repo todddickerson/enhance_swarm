@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'timeout'
 require_relative 'logger'
 require_relative 'agent_spawner'
 require_relative 'session_manager'
@@ -548,6 +549,9 @@ module EnhanceSwarm
         # Validate phase completion before proceeding
         if phase_results.all? { |result| result[:success] }
           Logger.info("✅ Phase #{index + 1} completed successfully")
+          
+          # CRITICAL: Merge all agent worktree changes back to main project
+          merge_agent_changes_to_main(phase_results)
         else
           Logger.error("❌ Phase #{index + 1} had failures, stopping execution")
           break
@@ -556,39 +560,79 @@ module EnhanceSwarm
         # Brief pause between phases for coordination
         sleep(2) if index < plan[:phases].length - 1
       end
+      
+      # Final cleanup and commit of merged changes
+      finalize_orchestration_results
     end
 
     def execute_phase(tasks)
       results = []
+      threads = []
       
-      # Spawn agents for all tasks in this phase
+      Logger.info("🚀 Starting parallel execution of #{tasks.length} tasks")
+      
+      # Execute tasks in parallel threads
       tasks.each do |task|
-        enhanced_prompt = build_enhanced_task_prompt(task)
-        
-        result = @agent_spawner.spawn_agent(
-          role: task[:role],
-          task: enhanced_prompt,
-          worktree: true
-        )
-        
-        if result
-          @agent_assignments[task[:id]] = result
-          results << { task_id: task[:id], success: true, agent_info: result }
-          Logger.info("✅ Spawned #{task[:role]} agent for task: #{task[:id]}")
-        else
-          # CRITICAL FIX: Execute task directly when spawning fails
-          Logger.warn("⚠️ Agent spawn failed, control agent executing task directly")
-          direct_result = execute_task_directly(task)
-          results << { task_id: task[:id], success: direct_result, executed_directly: true }
+        thread = Thread.new do
+          Thread.current[:task_id] = task[:id]
+          Thread.current[:role] = task[:role]
           
-          if direct_result
-            Logger.info("✅ Control agent completed task directly: #{task[:id]}")
-          else
-            Logger.error("❌ Control agent failed to execute task: #{task[:id]}")
+          begin
+            enhanced_prompt = build_enhanced_task_prompt(task)
+            
+            # Try agent spawning first
+            result = @agent_spawner.spawn_agent(
+              role: task[:role],
+              task: enhanced_prompt,
+              worktree: true
+            )
+            
+            if result
+              @agent_assignments[task[:id]] = result
+              Logger.info("✅ Spawned #{task[:role]} agent for task: #{task[:id]}")
+              { task_id: task[:id], success: true, agent_info: result }
+            else
+              # Fallback to direct execution
+              Logger.warn("⚠️ Agent spawn failed for #{task[:role]}, executing directly")
+              direct_result = execute_task_directly(task)
+              
+              if direct_result
+                Logger.info("✅ Control agent completed task directly: #{task[:id]}")
+              else
+                Logger.error("❌ Control agent failed to execute task: #{task[:id]}")
+              end
+              
+              { task_id: task[:id], success: direct_result, executed_directly: true }
+            end
+          rescue StandardError => e
+            Logger.error("💥 Task #{task[:id]} failed: #{e.message}")
+            { task_id: task[:id], success: false, error: e.message }
           end
+        end
+        
+        threads << thread
+      end
+      
+      # Wait for all threads with progress updates
+      Logger.info("⏳ Waiting for parallel task completion...")
+      completed = 0
+      
+      while threads.any?(&:alive?)
+        sleep(5) # Check every 5 seconds
+        previously_completed = completed
+        completed = threads.count { |t| !t.alive? }
+        
+        if completed > previously_completed
+          Logger.info("📊 Progress: #{completed}/#{threads.length} tasks completed")
         end
       end
       
+      # Collect all results
+      threads.each do |thread|
+        results << thread.value
+      end
+      
+      Logger.info("🎯 Phase execution completed: #{results.count { |r| r[:success] }}/#{results.length} successful")
       results
     end
 
@@ -641,21 +685,35 @@ module EnhanceSwarm
         prompt_file.write(execution_prompt)
         prompt_file.close
         
-        # Execute Claude CLI in the current directory with explicit instructions
+        # Execute Claude CLI with timeout controls
         success = false
-        Dir.chdir(Dir.pwd) do
-          # Run Claude and capture both output and success
-          result = system("claude < #{prompt_file.path}")
-          success = result && $?.success?
+        timeout_seconds = 120 # 2 minutes timeout
+        
+        begin
+          Logger.info("🔧 Executing Claude CLI with #{timeout_seconds}s timeout...")
           
-          if success
-            Logger.info("✅ #{task[:role]} task executed successfully")
-            
-            # Commit the changes made by this agent
-            commit_agent_work(task)
-          else
-            Logger.error("❌ #{task[:role]} task execution failed")
+          Timeout::timeout(timeout_seconds) do
+            Dir.chdir(Dir.pwd) do
+              # Run Claude and capture both output and success
+              result = system("claude --dangerously-skip-permissions < #{prompt_file.path}")
+              success = result && $?.success?
+              
+              if success
+                Logger.info("✅ #{task[:role]} task executed successfully")
+                
+                # Commit the changes made by this agent
+                commit_agent_work(task)
+              else
+                Logger.error("❌ #{task[:role]} task execution failed")
+              end
+            end
           end
+        rescue Timeout::Error
+          Logger.error("⏰ #{task[:role]} task timed out after #{timeout_seconds} seconds")
+          success = false
+        rescue StandardError => e
+          Logger.error("💥 #{task[:role]} task failed with error: #{e.message}")
+          success = false
         end
         
         # Clean up temp files
@@ -1077,6 +1135,30 @@ module EnhanceSwarm
           - Write("config/models/roles.yml", real_bt_roles_structure)  
           - Write("config/routes/api/v1.rb", shallow_nested_routes)
           
+          ## 8. 🎨 TAILWIND CSS STYLING (BULLET TRAIN DEFAULT)
+          **CRITICAL: Use Tailwind CSS - NOT Bootstrap or custom CSS**
+          ```erb
+          <!-- Example BT Tailwind patterns -->
+          <div class="bg-white shadow-sm rounded-lg p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Projects</h2>
+            <div class="space-y-4">
+              <% @projects.each do |project| %>
+                <div class="border border-gray-200 rounded-md p-4 hover:bg-gray-50">
+                  <h3 class="font-medium text-gray-900"><%= project.title %></h3>
+                  <p class="text-sm text-gray-600 mt-1"><%= project.description %></p>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          ```
+          
+          **BT Tailwind Best Practices:**
+          - Use BT's design tokens: bg-white, text-gray-900, border-gray-200
+          - Follow BT responsive patterns: sm:, md:, lg:, xl:
+          - Use BT component utilities: space-y-*, divide-y, ring-*
+          - Leverage BT theme classes: .btn, .card, .form-input (Tailwind-based)
+          - NEVER mix Bootstrap classes - BT is pure Tailwind CSS
+          
           **Essential BT Commands:**
           - bin/resolve --interactive (for file discovery)
           - bin/super-scaffold (alias for rails generate super_scaffold)
@@ -1096,7 +1178,9 @@ module EnhanceSwarm
           'Prefer concerns over full ejection',
           'Full plugin ecosystem utilization',
           'Role-based permissions with inheritance',
-          'Billing and Stripe integration ready'
+          'Billing and Stripe integration ready',
+          'Tailwind CSS styling - NEVER Bootstrap',
+          'BT theme design tokens and components'
         ],
         commands: [
           'bundle install',
@@ -1107,6 +1191,137 @@ module EnhanceSwarm
           'rspec'
         ]
       }
+    end
+
+    # CRITICAL: Merge agent worktree changes back to main project
+    def merge_agent_changes_to_main(phase_results)
+      Logger.info("🔄 Merging agent changes from worktrees to main project...")
+      
+      merged_count = 0
+      
+      phase_results.each do |result|
+        next unless result[:success] && result[:agent_info]
+        
+        agent_info = result[:agent_info]
+        worktree_path = agent_info[:worktree_path]
+        role = agent_info[:role]
+        
+        if worktree_path && Dir.exist?(worktree_path)
+          begin
+            # Copy all relevant files from worktree to main project
+            merge_worktree_to_main(worktree_path, role)
+            merged_count += 1
+            Logger.info("✅ Merged #{role} agent changes from #{worktree_path}")
+          rescue StandardError => e
+            Logger.error("❌ Failed to merge #{role} agent changes: #{e.message}")
+          end
+        end
+      end
+      
+      Logger.info("🎯 Merged changes from #{merged_count} agents to main project")
+    end
+
+    def merge_worktree_to_main(worktree_path, role)
+      main_dir = Dir.pwd
+      
+      # Define critical directories to sync
+      sync_paths = [
+        'app/',
+        'db/',
+        'config/',
+        'spec/',
+        'test/',
+        'lib/',
+        'Gemfile'
+      ]
+      
+      sync_paths.each do |path|
+        source_path = File.join(worktree_path, path)
+        target_path = File.join(main_dir, path)
+        
+        if File.exist?(source_path)
+          if File.directory?(source_path)
+            # Recursively copy directory contents
+            copy_directory_contents(source_path, target_path, role)
+          else
+            # Copy individual file
+            copy_file_if_newer(source_path, target_path, role)
+          end
+        end
+      end
+    end
+
+    def copy_directory_contents(source_dir, target_dir, role)
+      require 'fileutils'
+      
+      Dir.glob(File.join(source_dir, '**', '*')).each do |source_file|
+        next if File.directory?(source_file)
+        
+        relative_path = source_file.sub(source_dir + '/', '')
+        target_file = File.join(target_dir, relative_path)
+        
+        # Ensure target directory exists
+        FileUtils.mkdir_p(File.dirname(target_file))
+        
+        # Copy file if newer or different
+        copy_file_if_newer(source_file, target_file, role)
+      end
+    end
+
+    def copy_file_if_newer(source_file, target_file, role)
+      require 'fileutils'
+      
+      # Always copy from agents - they have the latest work
+      if File.exist?(source_file)
+        begin
+          FileUtils.cp(source_file, target_file)
+          Logger.debug("📄 Copied #{role}: #{File.basename(target_file)}")
+        rescue StandardError => e
+          Logger.warn("⚠️ Failed to copy #{source_file}: #{e.message}")
+        end
+      end
+    end
+
+    def finalize_orchestration_results
+      Logger.info("🎯 Finalizing orchestration results...")
+      
+      begin
+        # Add all merged changes
+        system("git add -A")
+        
+        # Create comprehensive commit
+        commit_message = "EnhanceSwarm orchestration: Multi-agent implementation complete"
+        result = system("git commit -m '#{commit_message}' 2>/dev/null")
+        
+        if result
+          Logger.info("📝 All orchestration changes committed successfully")
+        else
+          Logger.info("ℹ️ No new changes to commit (agents may have worked in isolation)")
+        end
+        
+        # Clean up completed worktrees
+        cleanup_worktrees
+        
+      rescue StandardError => e
+        Logger.warn("⚠️ Failed to finalize results: #{e.message}")
+      end
+    end
+
+    def cleanup_worktrees
+      worktree_dir = '.enhance_swarm/worktrees'
+      return unless Dir.exist?(worktree_dir)
+      
+      Dir.glob(File.join(worktree_dir, '*')).each do |worktree_path|
+        if Dir.exist?(worktree_path)
+          begin
+            # Remove the worktree using git
+            system("git worktree remove --force #{worktree_path} 2>/dev/null")
+            Logger.debug("🧹 Cleaned up worktree: #{File.basename(worktree_path)}")
+          rescue StandardError => e
+            Logger.warn("⚠️ Failed to cleanup worktree #{worktree_path}: #{e.message}")
+          end
+        end
+      end
     end
   end
 end

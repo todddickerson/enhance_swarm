@@ -8,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.authors = ['Todd Dickerson']
   spec.email = ['todd@spontent.com']
 
-  spec.summary = 'Comprehensive Claude Swarm orchestration framework with best practices'
-  spec.description = 'EnhanceSwarm extracts and automates Claude Swarm multi-agent orchestration patterns, including the ENHANCE protocol, task management, MCP integrations, and token optimization strategies. Built from production experience with Rails 8 applications.'
+  spec.summary = 'Production-ready intelligent multi-agent orchestration for Claude with real dev team coordination'
+  spec.description = 'EnhanceSwarm transforms Claude into a sophisticated development team with specialized agents for Backend, Frontend, QA, and Integration. Features detached orchestration, Bullet Train deep integration, automatic worktree merging, and comprehensive logging. Built for production Rails and Bullet Train applications.'
   spec.homepage = 'https://github.com/todddickerson/enhance_swarm'
   spec.required_ruby_version = '>= 3.0.0'
   spec.license = 'MIT'

@@ -255,15 +255,17 @@ module EnhanceSwarm
         ## Your Task:
         #{base_prompt}
         
-        ## Important Instructions:
-        1. Stay focused on your role as a #{role} specialist
-        2. Follow the project's code standards and conventions
-        3. Work autonomously but consider integration with other agents
-        4. Create high-quality, production-ready code
-        5. Include comprehensive tests where appropriate
-        6. Document your changes and decisions
-        7. If you encounter permission issues, provide detailed implementation plans instead
-        8. Always output what you would implement, even if file operations fail
+        ## Critical Instructions:
+        1. YOU MUST ACTUALLY IMPLEMENT CODE - Use Read, Edit, Write, and Bash tools to create real files
+        2. Stay focused on your role as a #{role} specialist
+        3. Follow the project's code standards and conventions  
+        4. Work autonomously - DO NOT ASK FOR PERMISSION, JUST IMPLEMENT
+        5. Create high-quality, production-ready code with proper validations
+        6. 🚨 FOR BULLET TRAIN PROJECTS: ALWAYS use Super Scaffolding - NEVER create manual models!
+        7. 🎨 FOR BULLET TRAIN PROJECTS: ALWAYS use Tailwind CSS - NEVER Bootstrap or custom CSS!
+        8. Use Bash tool to run Rails generators, database migrations, and tests
+        9. Commit your changes when complete using Git commands
+        10. If you encounter any issues, fix them and continue until task is complete
         
         ## Available Tools:
         You have access to all Claude Code tools for file editing, terminal commands, and project analysis.
@@ -275,7 +277,14 @@ module EnhanceSwarm
     end
 
     def get_role_description(role)
-      case role.to_s.downcase
+      config = EnhanceSwarm.configuration
+      project_analyzer = ProjectAnalyzer.new
+      project_context = project_analyzer.generate_smart_defaults
+      
+      # Check if this is a Bullet Train project
+      is_bullet_train = has_bullet_train_stack?(config, project_context)
+      
+      base_description = case role.to_s.downcase
       when 'backend'
         'You specialize in server-side logic, APIs, database design, models, and business logic implementation.'
       when 'frontend'
@@ -290,6 +299,190 @@ module EnhanceSwarm
         'You specialize in Bullet Train Super Scaffolding, following Andrew Culver\'s conventions for team-scoped architecture, model relationships, and framework configuration.'
       else
         "You are a #{role} specialist agent focusing on your area of expertise."
+      end
+      
+      # Add Bullet Train specific instructions if this is a BT project
+      if is_bullet_train
+        base_description + get_bullet_train_role_enhancement(role)
+      else
+        base_description
+      end
+    end
+    
+    def has_bullet_train_stack?(config, project_context)
+      # Check Gemfile for bullet_train gems
+      return true if File.exist?('Gemfile') && File.read('Gemfile').include?('bullet_train')
+      
+      # Check technology stack
+      tech_stack = config.technology_stack || project_context[:technology_stack] || []
+      tech_stack.include?('Bullet Train')
+    rescue
+      false
+    end
+    
+    def get_bullet_train_role_enhancement(role)
+      case role.to_s.downcase
+      when 'backend'
+        <<~BT_ENHANCEMENT
+        
+        
+        ## 🚅 BULLET TRAIN BACKEND SPECIALIZATION:
+        
+        **CRITICAL: Use Super Scaffolding for ALL model generation**
+        - NEVER create models manually - always use: rails generate super_scaffold ModelName Team field:field_type
+        - Use bin/resolve ClassName --eject --open before modifying any existing models
+        - ALL models must inherit team-scoped architecture: belongs_to :team
+        
+        **Model Structure (EXACT pattern):**
+        ```ruby
+        class Contact < ApplicationRecord
+          include Contacts::Base  # Gem concern with core logic
+          include Webhooks::Outgoing::TeamSupport
+          # 🚅 add concerns above.
+          
+          # 🚅 add belongs_to associations above.
+          # 🚅 add has_many associations above.
+          # 🚅 add scopes above.
+          # 🚅 add validations above.
+          # 🚅 add callbacks above.
+          # 🚅 add methods above.
+        end
+        ```
+        
+        **🚨 MANDATORY EXECUTION SEQUENCE - NO EXCEPTIONS:**
+        1. FIRST: bundle exec rails generate super_scaffold Contact Team name:text_field email:email_field phone:phone_field company:text_field
+        2. THEN: bundle exec rails db:migrate
+        3. THEN: bundle exec rails test (to verify everything works)
+        4. ONLY IF NEEDED: bin/resolve Contacts::Base --eject --open (for customization)
+        5. Configure config/models/roles.yml with proper permissions
+        
+        **🚨 CRITICAL: You MUST actually run these commands using the Bash tool - not just describe them!**
+        **🚨 DO NOT create manual Rails models/controllers - ONLY use Super Scaffolding!**
+        **🚨 NEVER skip step 1 - Super Scaffolding is MANDATORY for Bullet Train projects!**
+        
+        **API Routes (add to config/routes/api/v1.rb):**
+        ```ruby
+        namespace :api do
+          namespace :v1 do
+            shallow do
+              resources :teams do
+                resources :contacts
+              end
+            end
+          end
+        end
+        ```
+        BT_ENHANCEMENT
+      when 'frontend'
+        <<~BT_ENHANCEMENT
+        
+        
+        ## 🚅 BULLET TRAIN FRONTEND SPECIALIZATION:
+        
+        **CRITICAL: Customize generated views, don't create from scratch**
+        - Super Scaffolding generates account/contacts/* views automatically
+        - Use bin/resolve account/contacts/_form --eject for view customization
+        - All views follow account-scoped pattern: app/views/account/contacts/
+        
+        **Required View Structure:**
+        - app/views/account/contacts/index.html.erb (team-scoped listing)
+        - app/views/account/contacts/show.html.erb (individual contact)
+        - app/views/account/contacts/_form.html.erb (create/edit form)
+        - Use Bullet Train themes and components
+        
+        **🎨 STYLING: Use Tailwind CSS (Bullet Train Default)**
+        - ALWAYS use Tailwind CSS classes (bg-blue-500, text-white, etc.)
+        - NEVER use Bootstrap or custom CSS - BT uses Tailwind by default
+        - Use BT's Tailwind theme tokens and design system
+        - Follow BT responsive patterns: sm:, md:, lg: breakpoints
+        - Use BT component classes: .btn, .card, .form-control (Tailwind-based)
+        
+        **Navigation Integration:**
+        - Add to account navigation (usually in app/views/account/shared/_menu.html.erb)
+        - Use BT icon helpers and Tailwind styling patterns
+        - Ensure mobile-responsive with Tailwind responsive classes
+        
+        **Commands:**
+        1. bin/resolve account/contacts --eject (to customize views)
+        2. bin/resolve shared/fields --open (for field customization)
+        3. Use existing BT theme patterns and components
+        BT_ENHANCEMENT
+      when 'qa'
+        <<~BT_ENHANCEMENT
+        
+        
+        ## 🚅 BULLET TRAIN QA SPECIALIZATION:
+        
+        **CRITICAL: Test team-scoped behavior and permissions**
+        - Test models with proper team association and scoping
+        - Validate role-based permissions from config/models/roles.yml
+        - Test API endpoints with proper authentication and authorization
+        
+        **Required Test Structure:**
+        ```ruby
+        # spec/models/contact_spec.rb
+        require 'rails_helper'
+        
+        RSpec.describe Contact, type: :model do
+          let(:team) { create(:team) }
+          let(:contact) { create(:contact, team: team) }
+          
+          it "belongs to team" do
+            expect(contact.team).to eq(team)
+          end
+          
+          it "validates required fields" do
+            # Test BT field validations
+          end
+          
+          it "respects team scoping" do
+            # Test team isolation
+          end
+        end
+        ```
+        
+        **API Testing:**
+        - spec/requests/api/v1/contacts_spec.rb with proper authentication
+        - Test team-scoped API access and permissions
+        - Validate webhook payload generation
+        
+        **Commands:**
+        1. bundle exec rspec spec/models/contact_spec.rb
+        2. bundle exec rspec spec/requests/api/v1/contacts_spec.rb
+        3. Test with different user roles and team memberships
+        BT_ENHANCEMENT
+      when 'scaffolding'
+        <<~BT_ENHANCEMENT
+        
+        
+        ## 🚅 BULLET TRAIN SCAFFOLDING MASTER PROTOCOL:
+        
+        **🚨 MANDATORY EXECUTION SEQUENCE (MUST RUN THESE EXACT COMMANDS) - NO EXCEPTIONS:**
+        1. bundle exec rails generate super_scaffold Contact Team name:text_field email:email_field phone:phone_field company:text_field
+        2. bundle exec rails db:migrate
+        3. bundle exec rails test (verify everything works)
+        4. Configure roles in config/models/roles.yml
+        5. Add API routes to config/routes/api/v1.rb
+        6. bundle exec rails test (final verification)
+        
+        **🚨 YOU MUST USE THE BASH TOOL TO ACTUALLY EXECUTE THESE COMMANDS - NOT JUST WRITE CODE FILES!**
+        **🚨 FAILURE TO RUN SUPER_SCAFFOLD COMMAND IS A CRITICAL ERROR!**
+        **🚨 DO NOT CREATE MANUAL MODELS/CONTROLLERS - BULLET TRAIN REQUIRES SUPER SCAFFOLDING!**
+        
+        **POST-SCAFFOLDING OPTIMIZATION:**
+        - bin/resolve Contacts::Base --eject --open (for model customization)
+        - bin/resolve account/contacts/_form --eject (for view customization)
+        - Add custom validations and business logic
+        - Configure webhooks and integrations
+        
+        **TEAM ARCHITECTURE VERIFICATION:**
+        - Ensure all models use team-scoped ownership
+        - Validate proper role inheritance in config/models/roles.yml
+        - Test API endpoints respect team boundaries
+        - Confirm webhook payloads include team context
+        BT_ENHANCEMENT
+      else
+        ''
       end
     end
 
@@ -323,9 +516,9 @@ module EnhanceSwarm
           #{prompt}
           EOF
           
-          # Run Claude with the prompt
+          # Run Claude with the prompt in interactive mode with full permissions
           echo "Executing Claude for #{role} agent..."
-          claude --print < "$PROMPT_FILE"
+          claude --dangerously-skip-permissions < "$PROMPT_FILE"
           
           # Cleanup
           rm -f "$PROMPT_FILE"

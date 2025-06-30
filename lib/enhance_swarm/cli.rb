@@ -2,6 +2,7 @@
 
 require 'thor'
 require 'colorize'
+require 'timeout'
 require_relative 'web_ui'
 require_relative 'session_manager'
 require_relative 'task_coordinator'
@@ -84,18 +85,73 @@ module EnhanceSwarm
     desc 'orchestrate TASK_DESC', 'Intelligent multi-agent orchestration with smart coordination'
     option :coordination, type: :boolean, default: true, desc: 'Enable intelligent task coordination'
     option :follow, type: :boolean, default: false, desc: 'Stream live output from all agents'
+    option :background, type: :boolean, default: false, desc: 'Run orchestration in background (non-blocking)'
+    option :detached, type: :boolean, default: false, desc: 'Run completely detached and return immediately'
     def orchestrate(task_desc)
       say "🎯 Starting intelligent multi-agent orchestration", :blue
       say "Task: #{task_desc}", :white
       
       begin
         coordinator = TaskCoordinator.new
-        coordinator.coordinate_task(task_desc)
+        
+        if options[:detached]
+          # Run completely detached - spawn background process and return immediately
+          spawn_detached_orchestration(task_desc, coordinator)
+          say "🚀 Orchestration started in detached mode", :green
+          say "📁 Check .enhance_swarm/logs/ for progress updates", :blue
+          return
+        elsif options[:background]
+          # Run in background with periodic status updates
+          run_background_orchestration(task_desc, coordinator)
+        else
+          # Run normally (blocking)
+          coordinator.coordinate_task(task_desc)
+        end
         
         say "✅ Multi-agent orchestration completed successfully!", :green
+      rescue Timeout::Error => e
+        say "⏰ Orchestration timed out: #{e.message}", :red
+        say "Consider breaking down the task into smaller parts", :yellow
+      rescue SystemExit, Interrupt
+        say "🛑 Orchestration interrupted by user", :yellow
       rescue StandardError => e
         say "❌ Orchestration failed: #{e.message}", :red
         say "Debug info: #{e.backtrace.first(3).join("\n")}", :yellow
+        say "Run 'enhance-swarm doctor' to check system health", :blue
+      end
+    end
+
+    desc 'status', 'Check status of running orchestration'
+    def status
+      if File.exist?('.enhance_swarm/logs/orchestration.pid')
+        pid = File.read('.enhance_swarm/logs/orchestration.pid').strip
+        
+        begin
+          Process.getpgid(pid.to_i)
+          say "🔄 Orchestration running (PID: #{pid})", :blue
+          
+          if File.exist?('.enhance_swarm/logs/orchestration_status.txt')
+            status = File.read('.enhance_swarm/logs/orchestration_status.txt').strip
+            say "Status: #{status}", :yellow
+          end
+          
+          # Show recent log entries
+          if File.exist?('.enhance_swarm/logs/orchestration.log')
+            logs = File.readlines('.enhance_swarm/logs/orchestration.log').last(5)
+            say "\nRecent activity:", :white
+            logs.each { |log| say "  #{log.strip}", :light_black }
+          end
+          
+        rescue Errno::ESRCH
+          say "💤 No orchestration currently running", :yellow
+          
+          if File.exist?('.enhance_swarm/logs/orchestration_status.txt')
+            status = File.read('.enhance_swarm/logs/orchestration_status.txt').strip
+            say "Last status: #{status}", :light_black
+          end
+        end
+      else
+        say "💤 No orchestration currently running", :yellow
       end
     end
 
@@ -571,6 +627,78 @@ module EnhanceSwarm
     end
 
     private
+
+    def spawn_detached_orchestration(task_desc, coordinator)
+      require 'fileutils'
+      
+      # Ensure logs directory exists
+      FileUtils.mkdir_p('.enhance_swarm/logs')
+      
+      # Create status files
+      File.write('.enhance_swarm/logs/orchestration_status.txt', 'STARTING')
+      
+      # Log the start
+      File.write('.enhance_swarm/logs/orchestration.log', 
+        "#{Time.now}: Starting detached orchestration\nTask: #{task_desc}\n", 
+        mode: 'a')
+      
+      # Spawn background process using Ruby Process.spawn
+      pid = Process.spawn(
+        {
+          'ENHANCE_SWARM_DETACHED' => 'true',
+          'ENHANCE_SWARM_TASK' => task_desc
+        },
+        'ruby', '-e', <<~RUBY,
+          require '#{File.expand_path('../../enhance_swarm', __FILE__)}'
+          
+          task_desc = ENV['ENHANCE_SWARM_TASK']
+          
+          begin
+            Dir.chdir('#{Dir.pwd}')
+            
+            File.write('.enhance_swarm/logs/orchestration_status.txt', 'RUNNING')
+            File.write('.enhance_swarm/logs/orchestration.log', 
+              "\#{Time.now}: Coordinator starting\\n", mode: 'a')
+            
+            coordinator = EnhanceSwarm::TaskCoordinator.new
+            coordinator.coordinate_task(task_desc)
+            
+            File.write('.enhance_swarm/logs/orchestration_status.txt', 'COMPLETED')
+            File.write('.enhance_swarm/logs/orchestration.log', 
+              "\#{Time.now}: Orchestration completed successfully\\n", mode: 'a')
+              
+          rescue => e
+            File.write('.enhance_swarm/logs/orchestration_status.txt', "FAILED: \#{e.message}")
+            File.write('.enhance_swarm/logs/orchestration.log', 
+              "\#{Time.now}: ERROR: \#{e.message}\\n\#{e.backtrace.first(3).join('\\n')}\\n", mode: 'a')
+          end
+        RUBY
+        chdir: Dir.pwd,
+        out: '.enhance_swarm/logs/orchestration.log',
+        err: '.enhance_swarm/logs/orchestration.log'
+      )
+      
+      # Store PID and detach
+      File.write('.enhance_swarm/logs/orchestration.pid', pid.to_s)
+      Process.detach(pid)
+      
+      File.write('.enhance_swarm/logs/orchestration.log', 
+        "#{Time.now}: Orchestration PID: #{pid}\n", mode: 'a')
+    end
+
+    def run_background_orchestration(task_desc, coordinator)
+      thread = Thread.new do
+        coordinator.coordinate_task(task_desc)
+      end
+      
+      # Monitor with periodic updates
+      while thread.alive?
+        say "⏳ Orchestration running... (#{Time.now.strftime('%H:%M:%S')})", :blue
+        sleep(30)
+      end
+      
+      thread.value # Wait for completion
+    end
 
     def spawn_with_streaming(task_desc, role = nil)
       orchestrator = Orchestrator.new

@@ -27,13 +27,27 @@ enhance-swarm init
 ```
 
 ### Run Intelligent Multi-Agent Development
-```bash
-# Orchestrate a complete feature with specialized agents
-enhance-swarm orchestrate "Add user authentication with email verification"
 
-# Or use the enhanced ENHANCE protocol
+**Recommended: Detached Mode (Non-blocking)**
+```bash
+# Start orchestration in background - returns immediately
+enhance-swarm orchestrate "Create a Contact management system with CRUD operations" --detached
+
+# Monitor progress
+enhance-swarm status
+
+# Check logs
+tail -f .enhance_swarm/logs/orchestration.log
+```
+
+**Alternative: Interactive Mode**
+```bash
+# Or use the enhanced ENHANCE protocol (interactive)
 enhance-swarm enhance
 # Then enter: "Build a todo management system with real-time updates"
+
+# Standard orchestration (blocking)
+enhance-swarm orchestrate "Add user authentication with email verification"
 ```
 
 ## 🎯 How It Works
@@ -99,6 +113,38 @@ enhance-swarm doctor
 # Clean up completed work
 enhance-swarm cleanup
 ```
+
+## 📋 Real-World Example
+
+**Task**: "Create a comprehensive Contact management system with name, email, phone, company fields, and full CRUD operations with proper validation and testing"
+
+**What EnhanceSwarm Creates**:
+```
+📁 Generated Files (14 files, 304 insertions):
+├── app/models/contact.rb                 # Model with validations
+├── app/controllers/contacts_controller.rb # Full CRUD controller  
+├── app/views/contacts/
+│   ├── index.html.erb                   # List all contacts
+│   ├── show.html.erb                    # View contact details
+│   ├── new.html.erb                     # Create new contact
+│   ├── edit.html.erb                    # Edit existing contact
+│   └── _form.html.erb                   # Shared form partial
+├── db/migrate/create_contacts.rb         # Database migration
+├── config/routes.rb                     # Updated routes
+└── .enhance_swarm/logs/                 # Orchestration logs
+```
+
+**Multi-Agent Workflow**:
+1. **Backend Agent**: Creates Contact model with validations, database migration
+2. **Frontend Agent**: Builds complete view set with Tailwind CSS responsive design
+3. **Integration Agent**: Updates routes, ensures everything works together
+4. **Auto-commit**: All changes committed to git with proper message
+
+**🎨 Styling Framework**:
+- **Bullet Train Projects**: Tailwind CSS (default) - modern utility-first framework
+- **Regular Rails Projects**: Bootstrap or Tailwind CSS based on project setup
+
+**Total Time**: ~2 minutes (background execution)
 
 ## 🎭 Agent Roles & Specializations
 
@@ -189,6 +235,44 @@ resources:
 - Comprehensive security testing framework
 - Production validation and deployment readiness
 
+## 📊 Monitoring & Status
+
+### Check Orchestration Progress
+```bash
+# Check if orchestration is running
+enhance-swarm status
+
+# Monitor logs in real-time
+tail -f .enhance_swarm/logs/orchestration.log
+
+# View specific agent output
+cat .enhance_swarm/logs/backend_output.log
+```
+
+### Understanding Output
+```bash
+🎯 Starting intelligent multi-agent orchestration
+🚀 Orchestration started in detached mode
+📁 Check .enhance_swarm/logs/ for progress updates
+
+# Status responses:
+📊 Orchestration running (PID: 12345)
+Status: RUNNING
+✅ Status: COMPLETED  
+❌ Status: FAILED: <error message>
+```
+
+### Log Structure
+```
+.enhance_swarm/logs/
+├── orchestration.log          # Main orchestration progress
+├── orchestration_status.txt   # Current status (RUNNING/COMPLETED/FAILED)
+├── orchestration.pid          # Process ID for monitoring
+├── backend_output.log         # Backend agent output
+├── frontend_output.log        # Frontend agent output
+└── general_output.log         # General agent output
+```
+
 ## 🎯 Real-World Examples
 
 ### Add Authentication System
@@ -240,6 +324,47 @@ enhance-swarm status
 ### Debug Mode
 ```bash
 ENHANCE_SWARM_DEBUG=true enhance-swarm orchestrate "your task"
+```
+
+## 📚 Quick Reference
+
+### Essential Commands
+```bash
+# Setup
+gem install enhance_swarm && enhance-swarm init
+
+# Start orchestration (recommended)
+enhance-swarm orchestrate "Your task description" --detached
+
+# Monitor progress  
+enhance-swarm status
+tail -f .enhance_swarm/logs/orchestration.log
+
+# Alternative: Interactive mode
+enhance-swarm enhance
+```
+
+### Command Options
+```bash
+--detached          # Run in background (recommended)
+--background        # Run with periodic updates
+--follow            # Stream live output (blocking)
+--coordination      # Enable task coordination (default: true)
+```
+
+### Common Tasks
+```bash
+# Full-stack features
+enhance-swarm orchestrate "Create user registration with email verification" --detached
+
+# CRUD systems  
+enhance-swarm orchestrate "Build inventory management with categories and search" --detached
+
+# API development
+enhance-swarm orchestrate "Add REST API with JWT authentication" --detached
+
+# UI components
+enhance-swarm orchestrate "Create responsive dashboard with charts" --detached
 ```
 
 ## 🤝 Contributing

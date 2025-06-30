@@ -5,6 +5,77 @@ All notable changes to EnhanceSwarm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-06-30
+
+### 🔥 Critical Orchestration Fixes & Production Enhancements
+
+This release resolves critical orchestration issues that prevented multi-agent coordination from working reliably, plus adds comprehensive Bullet Train support and modern workflow features.
+
+#### 💥 Breaking Orchestration Issues Fixed
+- **✅ CRITICAL: Worktree Merge Strategy** - Agents now properly merge changes back to main project (was creating "phantom completions")
+- **✅ CRITICAL: Orchestration Timeout Controls** - Added 120-second timeouts with proper error handling (was hanging indefinitely)
+- **✅ CRITICAL: Bullet Train Super Scaffolding Compliance** - Enhanced prompts force proper BT conventions instead of manual Rails models
+- **✅ CRITICAL: Task Decomposition Integration** - Fixed agent spawning pipeline preventing orchestration from starting
+
+#### 🚀 New Features
+- **✅ Detached Mode (`--detached`)** - Non-blocking orchestration with background execution and progress monitoring
+- **✅ Orchestration Status Monitoring** - Real-time status checking with `enhance-swarm status` command
+- **✅ Enhanced Error Handling** - Specific exception handling for timeout, interruption, and system errors
+- **✅ Comprehensive Logging** - Structured logs in `.enhance_swarm/logs/` with orchestration progress tracking
+
+#### 🎨 Bullet Train Enhancements
+- **✅ Tailwind CSS Default** - BT projects now correctly use Tailwind CSS instead of Bootstrap by default
+- **✅ Enhanced BT Prompting** - Mandatory Super Scaffolding execution sequences with explicit command requirements
+- **✅ BT Pattern Compliance** - Proper magic comments (🚅), includes, and team-scoped architecture enforcement
+- **✅ BT Theme Integration** - Full `bullet_train-themes-tailwind_css` support with design token usage
+
+#### 🔧 Technical Improvements
+- **Parallel Agent Execution** - Multi-threaded task coordination with progress monitoring
+- **Smart Framework Detection** - Automatic Bullet Train vs Rails detection with appropriate tooling
+- **Enhanced CLI Interface** - Added `--background`, `--detached` options with comprehensive help
+- **Git Integration** - Automatic commits with descriptive messages after successful orchestration
+- **Resource Management** - Proper cleanup of worktrees and temporary files
+
+#### 📋 Real-World Validation
+Production testing shows consistent **2-3 minute orchestration** with **10-15 files created**, including:
+- Complete CRUD systems with models, controllers, views, migrations
+- Professional-grade validations and test suites (RSpec with Factory Bot)
+- Responsive UI with proper framework styling (Tailwind for BT, Bootstrap/Tailwind for Rails)
+- Automatic git commits with all changes properly merged
+
+#### 📚 Documentation Updates
+- **Updated README** with detached mode examples and monitoring instructions
+- **Real-world examples** with actual file counts and completion times
+- **Quick reference** guide with essential commands and options
+- **Bullet Train setup** instructions with Tailwind CSS defaults
+
+### 🎯 Migration Guide from v2.0.0
+
+**Recommended Usage Change:**
+```bash
+# OLD (blocking, timeout issues)
+enhance-swarm orchestrate "Create contact system"
+
+# NEW (non-blocking, reliable)
+enhance-swarm orchestrate "Create contact system" --detached
+enhance-swarm status  # Monitor progress
+```
+
+**Bullet Train Projects:**
+- Will now correctly use Tailwind CSS (not Bootstrap)
+- Super Scaffolding commands are mandatory (enforced in prompts)
+- Team-scoped architecture automatically applied
+
+## [2.0.0] - 2025-06-29
+
+### 🎉 Major Framework-Specific Optimizations
+
+#### 🚅 Bullet Train Deep Integration
+- **Complete BT Plugin Ecosystem** - Full support for all 15+ Bullet Train gems
+- **Andrew Culver Conventions** - Proper namespacing, team-scoped architecture, magic comments
+- **Super Scaffolding Integration** - Intelligent use of BT's scaffolding system
+- **Role-Based Permissions** - Comprehensive `config/models/roles.yml` management
+
 ## [1.0.0] - 2025-06-29
 
 ### 🎉 Major Release - Production Ready
