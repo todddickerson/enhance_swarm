@@ -5,6 +5,24 @@ All notable changes to EnhanceSwarm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2025-06-30
+
+### 🔧 Critical Bug Fixes
+
+#### 💥 Production Issues Resolved
+- **✅ CRITICAL: Fixed Detached Mode Logging** - Absolute paths prevent log files from disappearing in background processes
+- **✅ CRITICAL: Fixed Bullet Train Super Scaffolding** - Non-interactive printf commands prevent NoMethodError on interactive prompts
+- **✅ Enhanced Non-Interactive Templates** - Comprehensive printf templates for common BT scaffolding patterns
+- **✅ Improved Status Reporting** - Better orchestration monitoring and error handling
+
+#### 🛠️ Technical Improvements
+- **Detached Mode:** Fixed absolute path resolution for `.enhance_swarm/logs/` directory
+- **BT Scaffolding:** Added `printf "y\\n[slug]\\n[icon]\\n"` templates for common Super Scaffolding patterns
+- **Error Handling:** Enhanced subprocess error capture and reporting
+- **Status Monitoring:** Reliable status file writing with working directory context
+
+This patch release ensures production orchestration reliability with proper logging and Bullet Train scaffolding compliance.
+
 ## [2.1.0] - 2025-06-30
 
 ### 🔥 Critical Orchestration Fixes & Production Enhancements
