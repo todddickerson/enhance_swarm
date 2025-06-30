@@ -18,6 +18,7 @@ EnhanceSwarm transforms Claude into a sophisticated development team that works 
 ### Installation
 ```bash
 gem install enhance_swarm
+# Version 2.1.0+ required for critical fixes and detached mode
 ```
 
 ### Initialize in Your Project
