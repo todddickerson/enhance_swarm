@@ -350,15 +350,28 @@ module EnhanceSwarm
         ```
         
         **🚨 MANDATORY EXECUTION SEQUENCE - NO EXCEPTIONS:**
-        1. FIRST: bundle exec rails generate super_scaffold Contact Team name:text_field email:email_field phone:phone_field company:text_field
+        1. FIRST: Use Super Scaffolding with non-interactive mode:
+           ```bash
+           # For Contact model:
+           printf "y\\ncontacts\\nti-address-book\\n" | bundle exec rails generate super_scaffold Contact Team name:text_field email:email_field phone:phone_field company:text_field
+           
+           # For Project model:
+           printf "y\\nprojects\\nti-view-grid\\n" | bundle exec rails generate super_scaffold Project Team title:text_field description:trix_editor status:buttons due_date:date_field
+           
+           # Template for any model:
+           printf "y\\n[plural_slug]\\n[icon_name]\\n" | bundle exec rails generate super_scaffold [ModelName] Team [field:type ...]
+           ```
+           - Auto-answers: navbar=yes, slug=[plural_slug], icon=[icon_name]
+           - Common icons: ti-address-book, ti-view-grid, ti-users, ti-folder, ti-calendar
         2. THEN: bundle exec rails db:migrate
         3. THEN: bundle exec rails test (to verify everything works)
-        4. ONLY IF NEEDED: bin/resolve Contacts::Base --eject --open (for customization)
+        4. ONLY IF NEEDED: bin/resolve Projects::Base --eject --open (for customization)
         5. Configure config/models/roles.yml with proper permissions
         
         **🚨 CRITICAL: You MUST actually run these commands using the Bash tool - not just describe them!**
         **🚨 DO NOT create manual Rails models/controllers - ONLY use Super Scaffolding!**
         **🚨 NEVER skip step 1 - Super Scaffolding is MANDATORY for Bullet Train projects!**
+        **🚨 ALWAYS use printf with proper answers for interactive prompts!**
         
         **API Routes (add to config/routes/api/v1.rb):**
         ```ruby

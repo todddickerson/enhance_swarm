@@ -652,30 +652,31 @@ module EnhanceSwarm
           require '#{File.expand_path('../../enhance_swarm', __FILE__)}'
           
           task_desc = ENV['ENHANCE_SWARM_TASK']
+          working_dir = '#{Dir.pwd}'
           
           begin
-            Dir.chdir('#{Dir.pwd}')
+            Dir.chdir(working_dir)
             
-            File.write('.enhance_swarm/logs/orchestration_status.txt', 'RUNNING')
-            File.write('.enhance_swarm/logs/orchestration.log', 
-              "\#{Time.now}: Coordinator starting\\n", mode: 'a')
+            File.write("\#{working_dir}/.enhance_swarm/logs/orchestration_status.txt", 'RUNNING')
+            File.write("\#{working_dir}/.enhance_swarm/logs/orchestration.log", 
+              "\#{Time.now}: Coordinator starting in \#{working_dir}\\n", mode: 'a')
             
             coordinator = EnhanceSwarm::TaskCoordinator.new
             coordinator.coordinate_task(task_desc)
             
-            File.write('.enhance_swarm/logs/orchestration_status.txt', 'COMPLETED')
-            File.write('.enhance_swarm/logs/orchestration.log', 
+            File.write("\#{working_dir}/.enhance_swarm/logs/orchestration_status.txt", 'COMPLETED')
+            File.write("\#{working_dir}/.enhance_swarm/logs/orchestration.log", 
               "\#{Time.now}: Orchestration completed successfully\\n", mode: 'a')
               
           rescue => e
-            File.write('.enhance_swarm/logs/orchestration_status.txt', "FAILED: \#{e.message}")
-            File.write('.enhance_swarm/logs/orchestration.log', 
+            File.write("\#{working_dir}/.enhance_swarm/logs/orchestration_status.txt", "FAILED: \#{e.message}")
+            File.write("\#{working_dir}/.enhance_swarm/logs/orchestration.log", 
               "\#{Time.now}: ERROR: \#{e.message}\\n\#{e.backtrace.first(3).join('\\n')}\\n", mode: 'a')
           end
         RUBY
         chdir: Dir.pwd,
-        out: '.enhance_swarm/logs/orchestration.log',
-        err: '.enhance_swarm/logs/orchestration.log'
+        out: File.join(Dir.pwd, '.enhance_swarm/logs/orchestration.log'),
+        err: File.join(Dir.pwd, '.enhance_swarm/logs/orchestration.log')
       )
       
       # Store PID and detach
